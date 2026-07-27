@@ -32,20 +32,17 @@ struct StructuredGenerationValidatorTests {
         #expect(failures.contains(.correctChoiceNotFound("missing")))
     }
 
-    @Test("Every supplied source card must be represented by a citation")
-    func missingSourceCoverageIsRejected() {
+    @Test("Only source cards actually used need a resolvable citation")
+    func unusedSourceCardsDoNotForceCitations() {
         let fixture = StructuredGenerationFixtures.validArtifact
-        let incompleteLesson = StructuredLessonArtifact(
+        let focusedLesson = StructuredLessonArtifact(
             title: fixture.lesson.title,
             learningObjective: fixture.lesson.learningObjective,
             explanation: fixture.lesson.explanation,
             exampleCode: fixture.lesson.exampleCode,
-            citationIDs: [
-                "main-actor-state",
-                "stale-result-protection",
-            ]
+            citationIDs: ["main-actor-state"]
         )
-        let incompleteExercise = StructuredMultipleChoiceExercise(
+        let focusedExercise = StructuredMultipleChoiceExercise(
             prompt: fixture.exercise.prompt,
             choices: fixture.exercise.choices,
             correctChoiceID: fixture.exercise.correctChoiceID,
@@ -58,8 +55,8 @@ struct StructuredGenerationValidatorTests {
             modelVersion: fixture.modelVersion,
             swiftVersion: fixture.swiftVersion,
             minimumIOSVersion: fixture.minimumIOSVersion,
-            lesson: incompleteLesson,
-            exercise: incompleteExercise
+            lesson: focusedLesson,
+            exercise: focusedExercise
         )
 
         let failures = validator.failures(
@@ -67,11 +64,26 @@ struct StructuredGenerationValidatorTests {
             for: StructuredGenerationFixtures.request
         )
 
-        #expect(
-            failures.contains(
-                .uncitedSourceCard(cardID: "cooperative-cancellation")
-            )
-        )
+        #expect(failures.isEmpty)
+    }
+
+    @Test("Diagnostic categories never expose rejected values")
+    func diagnosticCategoriesArePrivacySafe() {
+        let privateCardID = "private-card-identity"
+        let privateChoiceText = "private generated answer"
+        let failures: [StructuredGenerationValidationFailure] = [
+            .unknownCitation(scope: .lesson, cardID: privateCardID),
+            .duplicateChoiceText(privateChoiceText),
+        ]
+        let diagnostics = failures.map {
+            "\($0.category.rawValue) \($0.category.title)"
+        }
+        .joined(separator: " ")
+
+        #expect(!diagnostics.contains(privateCardID))
+        #expect(!diagnostics.contains(privateChoiceText))
+        #expect(failures[0].category == .citationUnknown)
+        #expect(failures[1].category == .choiceTextDuplicated)
     }
 
     @Test("Source-card count and content hash are bounded inputs")

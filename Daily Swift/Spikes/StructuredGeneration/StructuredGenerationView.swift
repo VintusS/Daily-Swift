@@ -18,6 +18,7 @@ struct StructuredGenerationView: View {
                     providerPicker
                     statusCard
                     controls
+                    validationDetails
                     generatedContent
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -87,6 +88,47 @@ struct StructuredGenerationView: View {
         .background(.quaternary, in: RoundedRectangle(cornerRadius: 16))
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("structured-generation.status")
+    }
+
+    @ViewBuilder
+    private var validationDetails: some View {
+        if case let .rejected(error) = viewModel.state {
+            let categories = Array(
+                Set(error.failures.map(\.category))
+            )
+            .sorted { $0.title < $1.title }
+
+            GroupBox {
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(categories, id: \.rawValue) { category in
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: "exclamationmark.circle")
+                                .accessibilityHidden(true)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(category.title)
+                                Text(category.rawValue)
+                                    .font(.caption.monospaced())
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .accessibilityElement(children: .combine)
+                    }
+
+                    Text(
+                        "Only privacy-safe categories are shown. Source and "
+                            + "generated text are not included in diagnostics."
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } label: {
+                Label("Validation checks", systemImage: "checklist.unchecked")
+            }
+            .accessibilityIdentifier(
+                "structured-generation.validation-issues"
+            )
+        }
     }
 
     @ViewBuilder
@@ -253,7 +295,8 @@ struct StructuredGenerationView: View {
             "Both typed artifacts passed the current citation, version-tag, "
                 + "and answer-shape checks."
         case let .rejected(error):
-            "Blocked before presentation with \(error.failures.count) validation issue(s)."
+            "Blocked before presentation with \(error.failures.count) "
+                + "validation issue(s). Review the checks below."
         case let .failed(failure):
             failureDetail(failure)
         case .cancelled:
@@ -310,7 +353,8 @@ struct StructuredGenerationView: View {
         case .requestFailed:
             "The model could not complete the request. Retry or use deterministic content."
         case .invalidResponse:
-            "The typed response could not be decoded and was not presented."
+            "The typed response could not be decoded or mapped safely and was "
+                + "not presented."
         case .unknown:
             "An unknown error occurred. No candidate was presented."
         }

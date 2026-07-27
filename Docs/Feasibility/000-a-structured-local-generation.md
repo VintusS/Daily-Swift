@@ -1,7 +1,7 @@
 # Packet 000-A evidence: Structured local generation
 
 **Status:** In Progress
-**Evidence record version:** 1
+**Evidence record version:** 2
 **Opened:** 2026-07-27
 **Decision:** Pending physical-iPhone evidence
 **Governing record:** [ADR-005](../Architecture/ADR-005-foundation-models-provider.md)
@@ -16,13 +16,51 @@ This record declares the decision thresholds and collection method before
 device measurement. Empty result fields mean **not measured**. Host or simulator
 results must not be presented as physical-device evidence.
 
+## Pre-measurement amendment
+
+Version 2 was opened after manual, unscored use repeatedly reached the
+validation gate, but before any run was entered in the fixed 30-artifact table.
+The v1 candidate schema asked the model to reproduce application-owned version
+strings, citation identities, choice identities, and a correct-choice identity.
+Descriptions in a typed schema could not enforce the exact cross-field
+relationships later required by the validator.
+
+The v2 prompt and adapter make those relationships deterministic:
+
+- requested Swift and minimum-iOS versions are stamped by the application;
+- a runtime schema constrains guided citation numbers to the actual one-to-four
+  card request, then maps them to exact source-card identities; missing,
+  duplicate, or out-of-range citations are still rejected;
+- exactly three generated choice strings receive application-owned stable
+  identities, and a guided answer index maps to one of them;
+- each nested artifact must cite at least one source card it actually uses, but
+  unused input cards do not require citations;
+- source text, title, and location are losslessly JSON-encoded inside one
+  delimiter-safe untrusted-data boundary; only the application-assigned
+  citation number remains outside;
+- dynamic schema descriptions and the prompt tell the model not to repeat a
+  citation number within either nested artifact;
+- the debug harness displays stable validation categories without source
+  identities, prompt text, source text, or generated artifact text;
+- previously unclassified threshold gaps now resolve explicitly: one to three
+  practical cards and stable cancellation above one second through three
+  seconds are constrained go, while p95 above 45 seconds, cancellation above
+  three seconds, or any critical thermal state are no-go.
+
+Requiring every supplied card to appear in the output was removed because that
+measures input utilization, not provenance, and can encourage unsupported
+citations. Domain artifact schema version 1 remains the post-mapping application
+contract. Prompt version `structured-generation-v2` and provider candidate
+schema version 2 are versioned independently. No v1 result is scored, and the
+complete 30-run denominator starts from zero with v2.
+
 ## Scope
 
 - Map every Foundation Models availability result to an explicit application
   state.
 - Generate combined candidates containing a typed lesson and typed
   multiple-choice exercise from bounded source cards.
-- Validate schemas, citation identity and coverage, exact requested version
+- Validate schemas, citation presence and resolution, exact requested version
   tags, and structural answer uniqueness outside the model provider.
 - Exercise cancellation, repetition, failure, and deterministic fallback paths.
 - Measure first-pass acceptance, latency, practical context, memory, and thermal
@@ -51,17 +89,15 @@ results are recorded separately and cannot improve the first-pass rate.
 |---|---|---|---|
 | First-pass validator acceptance | At least 90% across 30 generated artifacts | 70–89% across 30 generated artifacts | Below 70% across 30 generated artifacts |
 | Presentation safety | 100% of invalid or uncited results are blocked | Same blocking requirement; deterministic lessons remain the default fallback | Any invalid artifact reaches presentation |
-| Warm latency | p95 at or below 20 seconds | p95 above 20 seconds and at or below 45 seconds | A result above the constrained range cannot support acceptance without a new, documented threshold |
-| Practical source-card context | At least 4 bounded source cards | Only 1–2 practical bounded source cards | Target workflow cannot produce a validated typed artifact from the minimum practical context |
-| Cancellation and repetition | Cancellation returns the UI to a stable state within 1 second and a subsequent request succeeds | Generation is limited or deferred only if the same state-integrity requirement still passes | State corruption after cancellation or repeated requests |
+| Warm latency | p95 at or below 20 seconds | p95 above 20 seconds and at or below 45 seconds | p95 above 45 seconds |
+| Practical source-card context | At least 4 bounded source cards | Only 1–3 practical bounded source cards | Target workflow cannot produce a validated typed artifact from one bounded source card |
+| Cancellation and repetition | Cancellation returns the UI to a stable state within 1 second and a subsequent request succeeds | Stable cancellation takes more than 1 second and at most 3 seconds, and a subsequent request succeeds; limit or defer generation | Stable cancellation takes more than 3 seconds, a subsequent request fails, or state is corrupted after cancellation or repetition |
 | Availability | Available on the target device for the declared locale, region, and Apple Intelligence state | Availability limitations are surfaced and deterministic lessons remain usable | Model unavailable on the target device under the intended supported configuration |
-| Memory and thermal behavior | No memory termination and no critical thermal state | Serious thermal pressure; limit generation, pre-generate opportunistically, and keep deterministic lessons as the default fallback | Memory termination or repeated critical thermal state |
+| Memory and thermal behavior | No memory termination and no serious or critical thermal state | Serious but not critical thermal pressure; limit generation, pre-generate opportunistically, and keep deterministic lessons as the default fallback | Memory termination or any critical thermal state |
 
 Any no-go signal makes the result no-go. A go result requires every go condition.
 A result that meets no no-go condition but meets a constrained condition is a
-constrained go, with the limitation recorded in ADR-005. An unclassified gap,
-such as exactly three practical source cards, cannot be called go; it requires a
-documented review or a pre-measurement amendment to this record.
+constrained go, with the limitation recorded in ADR-005.
 
 ## Definitions
 
@@ -69,8 +105,9 @@ documented review or a pre-measurement amendment to this record.
   applicable deterministic validator before repair, regeneration, or manual
   editing.
 - **Invalid for this feasibility rate:** a candidate fails its typed schema,
-  source-card identity or hash, citation resolution or coverage, exact requested
-  version tags, unique choice IDs/text, or single correct-choice reference.
+  source-card identity or hash, per-artifact citation presence or resolution,
+  exact requested version tags, unique choice IDs/text, or single
+  correct-choice reference.
 - **Warm latency:** elapsed time from request submission to a typed result or
   terminal failure after one unscored warm-up request. The same clock boundary
   applies to every measured run.
@@ -121,7 +158,9 @@ data.
 
 Simulator and host runs may establish:
 
-- typed schemas compile;
+- the runtime schema builder compiles and accepts supported request
+  cardinalities;
+- generated structured content maps into typed domain drafts;
 - validators accept and reject deterministic fixtures as expected;
 - the pure SDK-to-application availability mapper covers every known reason and
   locale rejection;
@@ -134,15 +173,18 @@ capacity, latency, memory pressure, energy use, or thermal behavior on iPhone.
 
 ### Recorded simulator result
 
-The 2026-07-27 iPhone 17 / iOS 26.5 simulator run established:
+The 2026-07-27 and 2026-07-28 iPhone 17 / iOS 26.5 simulator runs established:
 
-- both typed nested schemas and the Foundation Models adapter compile;
+- the request-cardinality runtime schema, structured-content decoder, typed
+  domain mapping, and Foundation Models adapter compile;
 - four bounded project-authored source cards pass request validation;
 - source-card SHA-256 digests are recomputed before provider generation;
-- adversarial prompt delimiters are escaped and the complete rendered prompt
-  has a hard character bound;
-- unknown, duplicate, missing, and incomplete citations are blocked;
-- aggregate citation coverage is required for every supplied source card;
+- source text and metadata round-trip through delimiter-safe JSON encoding,
+  adversarial delimiter text cannot close the untrusted-data boundary, and the
+  complete rendered prompt has a hard character bound;
+- unknown, duplicate, and missing citations are blocked;
+- citation numbers are mapped to application-owned source identities, while
+  unused source-card inputs do not require artificial citations;
 - empty or duplicate choice identities, duplicate answer text, and a missing
   correct answer are blocked;
 - Swift and minimum-iOS version tags must match the generation request;
@@ -150,8 +192,12 @@ The 2026-07-27 iPhone 17 / iOS 26.5 simulator run established:
 - cancellation remains stable and a stale response cannot replace newer state;
 - the deterministic fixture completes the same validated presentation flow;
 - the debug and release signing-independent simulator builds pass;
-- the complete suite passes 20 tests with 0 failures, including one XCUITest
-  that presents both nested artifacts.
+- the complete suite passes 28 tests with 0 failures: 27 unit tests and one
+  XCUITest that presents both nested artifacts;
+- focused mapper tests prove that request metadata, citation identities, choice
+  identities, and the correct answer reference are application-owned;
+- invalid citation numbers and answer indices fail closed, and validation
+  diagnostics contain categories rather than rejected values.
 
 This evidence completes only the deterministic simulator portion of the packet.
 It does not count toward the physical-device benchmark or select a decision.
@@ -180,6 +226,9 @@ run.
 | iPhoneOS SDK | 26.5 |
 | FoundationModels module | 1.5.2 |
 | Project deployment target | iOS 26.0 |
+| Domain artifact schema | 1 |
+| Provider candidate schema | 2 |
+| Prompt version | `structured-generation-v2` |
 | Physical iPhone model | Not measured |
 | Device OS version and build | Not measured |
 | Locale and region | Not measured |
@@ -189,21 +238,63 @@ run.
 
 ## Measurement procedure
 
-1. Freeze the public or synthetic fixture manifest, typed schemas, prompt
-   version, validator version, and source-card size limits.
+1. Freeze the public or synthetic fixture manifest, provider candidate schema
+   version, typed domain contract version, prompt version, validator version,
+   and source-card size limits.
 2. Run deterministic validator, availability, cancellation, repeated-request,
    and fallback tests on the simulator.
-3. On the recorded physical iPhone, perform one unscored warm-up request.
-4. Run the fixed 30-artifact benchmark without editing failed candidates.
+3. On the recorded physical iPhone, perform one unscored four-card warm-up
+   request.
+4. Run the fixed 30-artifact schedule below without editing failed candidates
+   or changing its order.
 5. Record every request, including terminal failures, in the run table below.
-6. Run cancellation during active generation, confirm stable UI within one
-   second, and immediately complete a subsequent request.
+   Request size is the sum of UTF-8 bytes for session instructions and the
+   rendered prompt plus the sorted-key JSON byte count of the runtime
+   `GenerationSchema`. Record the three components and the total; opaque
+   framework overhead is excluded because the public API does not expose it.
+   Measure warm latency from Generate activation to terminal status with the
+   same 60-fps screen-recording timecodes used to align Instruments.
+6. During a separate four-card request, activate Cancel, record the exact time
+   to terminal stable UI, and immediately complete a subsequent request. Use
+   60-fps screen-recording timecodes so the measured value can be classified as
+   go, constrained go, or no-go without rounding to a threshold.
 7. Run intentionally invalid and uncited fixtures through presentation gating
    and record whether every one is blocked.
-8. Summarize latency, context, memory, and thermal evidence without including
-   private source or generated content.
-9. Select go, constrained go, or no-go only after the complete physical-device
-   evidence is reviewed.
+8. Attach Instruments VM Tracker for the complete scheduled session. After a
+   30-second post-warm-up idle baseline, sample at one-second intervals and
+   record baseline, per-run peak physical footprint, session peak, and whether
+   the process terminated. Synchronize run boundaries with screen-recording
+   timecodes.
+9. Record `ProcessInfo.processInfo.thermalState` before the warm-up, after each
+   scheduled run, at the worst observed point, and after a five-minute idle
+   recovery.
+10. Summarize latency, context, memory, and thermal evidence without including
+    private source or generated content.
+11. Select go, constrained go, or no-go only after the complete physical-device
+    evidence is reviewed.
+
+### Fixed source-card schedule
+
+The frozen four-card manifest uses these aliases only for the schedule:
+
+| Alias | Source-card identity |
+|---|---|
+| A | `main-actor-state` |
+| B | `stale-result-protection` |
+| C | `deterministic-validation` |
+| D | `cooperative-cancellation` |
+
+| Runs | Frozen subset |
+|---|---|
+| 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 30 | A + B + C + D |
+| 2, 8, 14, 20 | A; B; C; D, respectively |
+| 4, 10, 16, 22, 26, 28 | A+B; A+C; A+D; B+C; B+D; C+D, respectively |
+| 6, 12, 18, 24 | A+B+C; A+B+D; A+C+D; B+C+D, respectively |
+
+This yields 16 four-card runs and one pass over every one-, two-, and
+three-card subset. Acceptance remains one combined 30-run rate; per-cardinality
+counts are also reported so the practical-context decision is not selected
+post hoc.
 
 ## Run table template
 
@@ -232,32 +323,46 @@ diagnostics.
 
 ## Deterministic fallback
 
-The fallback supplies reviewed seed lessons and exercises through the same
-consumer-facing artifact contract. It performs no model call, requires no
-network or iCloud account, and preserves the daily learning flow when the model
-is unavailable, not ready, cancelled, rejected, or too expensive to run safely.
-Fallback content must retain stable source and version metadata and must pass
-the same applicable deterministic validators.
+The current spike fallback is a project-authored deterministic fixture that
+uses the same artifact, validation, and presentation path without a model call,
+network, or iCloud account. It proves fallback state continuity for this debug
+harness; it is not reviewed production curriculum and does not prove a complete
+daily learning loop.
 
-## Accessibility checks
+The production fallback must supply reviewed seed lessons and exercises, retain
+stable source and version metadata, pass the same applicable deterministic
+validators, and preserve the daily learning flow whenever the model is
+unavailable, not ready, cancelled, rejected, or too expensive to run safely.
 
-- Availability, generating, cancelled, rejected, and fallback states have
-  concise VoiceOver announcements.
-- State is communicated with text and semantics, never color alone.
-- Status and recovery actions remain usable at accessibility text sizes.
-- Progress animation respects Reduce Motion and is not required to understand
-  the state.
-- Cancellation and deterministic fallback remain reachable without a timed
-  interaction.
-- A long generation request never traps focus or blocks unrelated deterministic
-  learning.
+## Accessibility requirements and evidence
+
+Code inspection and the default-size UI smoke test establish semantic status
+text, accessibility identifiers, non-color state symbols, cancellation, retry,
+and deterministic-fixture controls. They do not establish manual VoiceOver,
+accessibility text-size, Reduce Motion, focus, or long-running generation
+behavior.
+
+Before this packet closes, physical-device or simulator manual evidence must
+confirm:
+
+- concise VoiceOver announcements for availability, generating, cancelled,
+  rejected, and fallback states;
+- state and recovery actions remain understandable without color and usable at
+  accessibility text sizes;
+- progress respects Reduce Motion and is not required to understand state;
+- cancellation and deterministic fallback remain reachable without a timed
+  interaction;
+- a long generation request does not trap focus or block the deterministic
+  fixture path.
 
 ## Privacy and provenance checks
 
 - Use only public, licensed, or synthetic repository fixtures.
-- Treat source-card text as untrusted data, separate from instructions.
+- Treat source-card text, title, and location as untrusted data, losslessly
+  JSON-encoded inside the same boundary and separate from instructions.
 - Assign citation identifiers in the prototype; never accept an invented source
   identity.
+- Show or record only stable rejection categories, never the rejected values.
 - Keep requests and generated artifacts on device.
 - Log categories, counts, timing, memory, and thermal observations only.
 - Do not sync raw artifacts or private diagnostics.
@@ -268,8 +373,9 @@ the same applicable deterministic validators.
   application code and prompt version are unchanged.
 - One device, locale, and benchmark cannot represent every supported runtime
   configuration.
-- Passing typed schemas does not prove factual correctness, teaching quality, or
-  semantic answer uniqueness beyond the implemented structural validators.
+- Passing schema-constrained decoding does not prove factual correctness,
+  teaching quality, or semantic answer uniqueness beyond the implemented
+  structural validators.
 - A short run may not reveal battery cost, sustained thermal pressure, or
   long-session memory growth.
 - Context capacity may vary with schema complexity and source-card composition.
@@ -278,7 +384,7 @@ the same applicable deterministic validators.
 
 ## Current conclusion
 
-The isolated debug implementation and deterministic simulator verification are
-complete. No product or architecture decision has been selected. The provider
-proposal remains **Proposed**, this packet remains **In Progress**, and all
-physical-iPhone measurements remain pending.
+The isolated debug implementation uses the v2 deterministic identity boundary.
+No product or architecture decision has been selected. The provider proposal
+remains **Proposed**, this packet remains **In Progress**, and the complete v2
+physical-iPhone measurement remains pending.
