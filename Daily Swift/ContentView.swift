@@ -10,14 +10,18 @@ import SwiftUI
 @MainActor
 struct ContentView: View {
     var body: some View {
+#if DEBUG
+        StructuredGenerationView()
+#else
         VStack {
-            Image(systemName: "globe")
+            Image(systemName: "swift")
                 .imageScale(.large)
                 .foregroundStyle(.tint)
-            Text("Hello, world!")
+            Text("Daily Swift")
                 .accessibilityIdentifier("initial.greeting")
         }
         .padding()
+#endif
     }
 }
 

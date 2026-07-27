@@ -19,7 +19,7 @@ work packet. Accepted records take precedence over execution plans.
 | ADR-002 | Planned | SwiftData and file-storage split |
 | ADR-003 | Planned | CloudKit sync and conflict resolution |
 | ADR-004 | Planned | Competency graph and mastery model |
-| ADR-005 | Planned | Foundation Models provider abstraction |
+| [ADR-005](ADR-005-foundation-models-provider.md) | Proposed | Foundation Models provider abstraction; Packet 000-A device decision pending |
 | ADR-006 | Planned | Retrieval and indexing approach |
 | ADR-007 | Planned | Generated-content trust and validation |
 | ADR-008 | Planned | Code-execution capability levels |
