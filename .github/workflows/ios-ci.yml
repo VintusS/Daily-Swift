@@ -1,0 +1,84 @@
+name: iOS CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  validate:
+    name: Project Hygiene
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CHANGE_TITLE: ${{ github.event.pull_request.title }}
+      CHANGE_BODY: ${{ github.event.pull_request.body }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Validate project conventions
+        run: .agents/skills/develop-daily-swift/scripts/validate-project-hygiene.sh
+
+  build:
+    name: Build
+    needs: validate
+    runs-on: macos-26
+    timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.5.app/Contents/Developer
+      BUILD_CONFIGURATION: ${{ github.event_name == 'push' && 'Release' || 'Debug' }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Report toolchain
+        run: xcodebuild -version
+
+      - name: Build application
+        run: |
+          xcodebuild \
+            -project "Daily Swift.xcodeproj" \
+            -scheme "Daily Swift" \
+            -configuration "$BUILD_CONFIGURATION" \
+            -destination "generic/platform=iOS Simulator" \
+            -derivedDataPath "$RUNNER_TEMP/DailySwiftDerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            clean build
+
+  tests:
+    name: Tests
+    needs:
+      - validate
+      - build
+    runs-on: macos-26
+    timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.5.app/Contents/Developer
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Run unit and UI smoke tests
+        run: |
+          xcodebuild \
+            -project "Daily Swift.xcodeproj" \
+            -scheme "Daily Swift" \
+            -configuration Debug \
+            -destination "platform=iOS Simulator,name=iPhone 17,OS=26.5" \
+            -derivedDataPath "$RUNNER_TEMP/DailySwiftTestDerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            clean test

@@ -6,19 +6,85 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXContainerItemProxy section */
+		930FFE39298A4E84B2B7F73B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 48D0737D3017CB420059E3C5 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 48D073843017CB420059E3C5;
+			remoteInfo = "Daily Swift";
+		};
+		FD712557BB9C43E890651579 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 48D0737D3017CB420059E3C5 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 48D073843017CB420059E3C5;
+			remoteInfo = "Daily Swift";
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		48D073853017CB420059E3C5 /* Daily Swift.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Daily Swift.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		9CC313C8D4D344369948EAC3 /* Daily SwiftTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Daily SwiftTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		C8DD16E963394C529F8CD345 /* CONTRIBUTING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CONTRIBUTING.md; sourceTree = "<group>"; };
+		CA9A5B18E38E4A6F947979AC /* Daily SwiftUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Daily SwiftUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		D909994A1491433E8CD97295 /* AGENTS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = AGENTS.md; sourceTree = "<group>"; };
+		EE0847B4D90F4E8185ABF096 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		2522231867484BC1A3289FA6 /* plans */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = plans;
+			sourceTree = "<group>";
+		};
+		25A21FD835E140CFAAF20697 /* .agents */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = .agents;
+			sourceTree = "<group>";
+		};
+		42E9CF3018454FA2882D605A /* Daily SwiftUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Daily SwiftUITests";
+			sourceTree = "<group>";
+		};
 		48D073873017CB420059E3C5 /* Daily Swift */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = "Daily Swift";
 			sourceTree = "<group>";
 		};
+		9138A83DC5974E8C955E1D2D /* Docs */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Docs;
+			sourceTree = "<group>";
+		};
+		9CF6CFC6BBD44E5CB3532889 /* Daily SwiftTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Daily SwiftTests";
+			sourceTree = "<group>";
+		};
+		A121310F39ED4B3686A1464E /* .github */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = .github;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		059519466A484F83A3920233 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2EB8898F363D439FAB35A2EF /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		48D073823017CB420059E3C5 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -33,6 +99,9 @@
 			isa = PBXGroup;
 			children = (
 				48D073873017CB420059E3C5 /* Daily Swift */,
+				9CF6CFC6BBD44E5CB3532889 /* Daily SwiftTests */,
+				42E9CF3018454FA2882D605A /* Daily SwiftUITests */,
+				70F368F4A5EE4641818B5AEE /* Project Support */,
 				48D073863017CB420059E3C5 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,8 +110,24 @@
 			isa = PBXGroup;
 			children = (
 				48D073853017CB420059E3C5 /* Daily Swift.app */,
+				9CC313C8D4D344369948EAC3 /* Daily SwiftTests.xctest */,
+				CA9A5B18E38E4A6F947979AC /* Daily SwiftUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		70F368F4A5EE4641818B5AEE /* Project Support */ = {
+			isa = PBXGroup;
+			children = (
+				D909994A1491433E8CD97295 /* AGENTS.md */,
+				C8DD16E963394C529F8CD345 /* CONTRIBUTING.md */,
+				EE0847B4D90F4E8185ABF096 /* .gitignore */,
+				25A21FD835E140CFAAF20697 /* .agents */,
+				A121310F39ED4B3686A1464E /* .github */,
+				9138A83DC5974E8C955E1D2D /* Docs */,
+				2522231867484BC1A3289FA6 /* plans */,
+			);
+			name = "Project Support";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -70,6 +155,52 @@
 			productReference = 48D073853017CB420059E3C5 /* Daily Swift.app */;
 			productType = "com.apple.product-type.application";
 		};
+		8479B2C0D2B74F57A9D39A8A /* Daily SwiftUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = EDBA9440B95C4A3885BBBCC9 /* Build configuration list for PBXNativeTarget "Daily SwiftUITests" */;
+			buildPhases = (
+				BDC505646E65444797F8CE41 /* Sources */,
+				2EB8898F363D439FAB35A2EF /* Frameworks */,
+				7FB64739FB644C64BB55F759 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				E6194D53AC814D31AC1CE5DE /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				42E9CF3018454FA2882D605A /* Daily SwiftUITests */,
+			);
+			name = "Daily SwiftUITests";
+			packageProductDependencies = (
+			);
+			productName = "Daily SwiftUITests";
+			productReference = CA9A5B18E38E4A6F947979AC /* Daily SwiftUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		F778C9248D764358A5B10778 /* Daily SwiftTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 40B2FBF7D4DA4309B3953554 /* Build configuration list for PBXNativeTarget "Daily SwiftTests" */;
+			buildPhases = (
+				FE51138977F4444B8DB8591E /* Sources */,
+				059519466A484F83A3920233 /* Frameworks */,
+				CC84F0370D2946F39019292D /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				DB1C6C7ADBD44A4797145F30 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				9CF6CFC6BBD44E5CB3532889 /* Daily SwiftTests */,
+			);
+			name = "Daily SwiftTests";
+			packageProductDependencies = (
+			);
+			productName = "Daily SwiftTests";
+			productReference = 9CC313C8D4D344369948EAC3 /* Daily SwiftTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -82,6 +213,14 @@
 				TargetAttributes = {
 					48D073843017CB420059E3C5 = {
 						CreatedOnToolsVersion = 26.5;
+					};
+					8479B2C0D2B74F57A9D39A8A = {
+						CreatedOnToolsVersion = 26.5;
+						TestTargetID = 48D073843017CB420059E3C5;
+					};
+					F778C9248D764358A5B10778 = {
+						CreatedOnToolsVersion = 26.5;
+						TestTargetID = 48D073843017CB420059E3C5;
 					};
 				};
 			};
@@ -100,12 +239,28 @@
 			projectRoot = "";
 			targets = (
 				48D073843017CB420059E3C5 /* Daily Swift */,
+				F778C9248D764358A5B10778 /* Daily SwiftTests */,
+				8479B2C0D2B74F57A9D39A8A /* Daily SwiftUITests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		48D073833017CB420059E3C5 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7FB64739FB644C64BB55F759 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CC84F0370D2946F39019292D /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -122,9 +277,65 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		BDC505646E65444797F8CE41 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FE51138977F4444B8DB8591E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		DB1C6C7ADBD44A4797145F30 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 48D073843017CB420059E3C5 /* Daily Swift */;
+			targetProxy = FD712557BB9C43E890651579 /* PBXContainerItemProxy */;
+		};
+		E6194D53AC814D31AC1CE5DE /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 48D073843017CB420059E3C5 /* Daily Swift */;
+			targetProxy = 930FFE39298A4E84B2B7F73B /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		3965640ED3EE4BEFB8862971 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.vintuss.Daily-SwiftTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Daily Swift.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Daily Swift";
+				TEST_TARGET_NAME = "Daily Swift";
+			};
+			name = Release;
+		};
 		48D0738E3017CB440059E3C5 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -160,7 +371,6 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = K9YT824399;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -178,7 +388,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -224,7 +434,6 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = K9YT824399;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -236,7 +445,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
@@ -253,13 +462,11 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = K9YT824399;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -267,14 +474,19 @@
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.vintuss.Daily-Swift";
+				PRODUCT_MODULE_NAME = DailySwift;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -285,13 +497,11 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = K9YT824399;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -299,20 +509,107 @@
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.vintuss.Daily-Swift";
+				PRODUCT_MODULE_NAME = DailySwift;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		6E2827A083074067AE9E266C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.vintuss.Daily-SwiftUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = "Daily Swift";
+			};
+			name = Debug;
+		};
+		80C4207E60F94538A0CC5FA3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.vintuss.Daily-SwiftTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Daily Swift.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Daily Swift";
+				TEST_TARGET_NAME = "Daily Swift";
+			};
+			name = Debug;
+		};
+		86C0CA84C0B74B5BA5976B20 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.vintuss.Daily-SwiftUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = "Daily Swift";
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		40B2FBF7D4DA4309B3953554 /* Build configuration list for PBXNativeTarget "Daily SwiftTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				80C4207E60F94538A0CC5FA3 /* Debug */,
+				3965640ED3EE4BEFB8862971 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		48D073803017CB420059E3C5 /* Build configuration list for PBXProject "Daily Swift" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -327,6 +624,15 @@
 			buildConfigurations = (
 				48D073913017CB440059E3C5 /* Debug */,
 				48D073923017CB440059E3C5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		EDBA9440B95C4A3885BBBCC9 /* Build configuration list for PBXNativeTarget "Daily SwiftUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6E2827A083074067AE9E266C /* Debug */,
+				86C0CA84C0B74B5BA5976B20 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

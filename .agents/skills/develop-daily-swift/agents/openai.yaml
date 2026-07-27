@@ -1,0 +1,4 @@
+interface:
+  display_name: "Develop Daily Swift"
+  short_description: "Build Daily Swift within its fixed guardrails"
+  default_prompt: "Use $develop-daily-swift to complete the current approved build packet with tests and verification."
