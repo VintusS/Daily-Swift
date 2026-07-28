@@ -80,12 +80,120 @@ enum StructuredGenerationValidationFailure: Equatable, Sendable {
         scope: StructuredGenerationCitationScope,
         cardID: String
     )
-    case uncitedSourceCard(cardID: String)
     case tooFewChoices(actual: Int, minimum: Int)
     case tooManyChoices(actual: Int, maximum: Int)
     case duplicateChoiceID(String)
     case duplicateChoiceText(String)
     case correctChoiceNotFound(String)
+}
+
+enum StructuredGenerationValidationCategory:
+    String,
+    Equatable,
+    Hashable,
+    Sendable {
+    case requiredFieldMissing = "required-field-missing"
+    case sourceCardsMissing = "source-cards-missing"
+    case sourceCardLimitExceeded = "source-card-limit-exceeded"
+    case sourceCardIdentityDuplicated = "source-card-identity-duplicated"
+    case sourceCardHashInvalid = "source-card-hash-invalid"
+    case sourceCardHashMismatch = "source-card-hash-mismatch"
+    case fieldLimitExceeded = "field-limit-exceeded"
+    case schemaVersionMismatch = "schema-version-mismatch"
+    case promptVersionMismatch = "prompt-version-mismatch"
+    case swiftVersionMismatch = "swift-version-mismatch"
+    case minimumIOSVersionMismatch = "minimum-ios-version-mismatch"
+    case citationsMissing = "citations-missing"
+    case citationDuplicated = "citation-duplicated"
+    case citationUnknown = "citation-unknown"
+    case choiceCountInvalid = "choice-count-invalid"
+    case choiceIdentityDuplicated = "choice-identity-duplicated"
+    case choiceTextDuplicated = "choice-text-duplicated"
+    case correctChoiceMissing = "correct-choice-missing"
+
+    var title: String {
+        switch self {
+        case .requiredFieldMissing:
+            "Required field is empty"
+        case .sourceCardsMissing:
+            "No source cards supplied"
+        case .sourceCardLimitExceeded:
+            "Source-card limit exceeded"
+        case .sourceCardIdentityDuplicated:
+            "Source-card identity is duplicated"
+        case .sourceCardHashInvalid:
+            "Source-card hash is malformed"
+        case .sourceCardHashMismatch:
+            "Source-card content changed"
+        case .fieldLimitExceeded:
+            "A field exceeds its size limit"
+        case .schemaVersionMismatch:
+            "Schema version does not match"
+        case .promptVersionMismatch:
+            "Prompt version does not match"
+        case .swiftVersionMismatch:
+            "Swift version does not match"
+        case .minimumIOSVersionMismatch:
+            "Minimum iOS version does not match"
+        case .citationsMissing:
+            "An artifact has no citation"
+        case .citationDuplicated:
+            "A citation is duplicated"
+        case .citationUnknown:
+            "A citation cannot be resolved"
+        case .choiceCountInvalid:
+            "Answer choice count is invalid"
+        case .choiceIdentityDuplicated:
+            "Answer choice identity is duplicated"
+        case .choiceTextDuplicated:
+            "Answer choice wording is duplicated"
+        case .correctChoiceMissing:
+            "Correct answer cannot be resolved"
+        }
+    }
+}
+
+extension StructuredGenerationValidationFailure {
+    var category: StructuredGenerationValidationCategory {
+        switch self {
+        case .emptyRequiredField:
+            .requiredFieldMissing
+        case .noSourceCards:
+            .sourceCardsMissing
+        case .tooManySourceCards:
+            .sourceCardLimitExceeded
+        case .duplicateSourceCardID:
+            .sourceCardIdentityDuplicated
+        case .invalidSourceCardContentHash:
+            .sourceCardHashInvalid
+        case .sourceCardContentHashMismatch:
+            .sourceCardHashMismatch
+        case .fieldTooLong:
+            .fieldLimitExceeded
+        case .schemaVersionMismatch:
+            .schemaVersionMismatch
+        case .promptVersionMismatch:
+            .promptVersionMismatch
+        case .swiftVersionMismatch:
+            .swiftVersionMismatch
+        case .minimumIOSVersionMismatch:
+            .minimumIOSVersionMismatch
+        case .missingCitations:
+            .citationsMissing
+        case .duplicateCitation:
+            .citationDuplicated
+        case .unknownCitation:
+            .citationUnknown
+        case .tooFewChoices, .tooManyChoices:
+            .choiceCountInvalid
+        case .duplicateChoiceID:
+            .choiceIdentityDuplicated
+        case .duplicateChoiceText:
+            .choiceTextDuplicated
+        case .correctChoiceNotFound:
+            .correctChoiceMissing
+        }
+    }
 }
 
 struct StructuredGenerationValidationError: Error, Equatable, Sendable {
@@ -177,12 +285,6 @@ struct StructuredGenerationValidator: Sendable {
                 knownCardIDs: knownCardIDs
             )
         )
-        let citedCardIDs = Set(
-            artifact.lesson.citationIDs + artifact.exercise.citationIDs
-        )
-        for card in request.sourceCards where !citedCardIDs.contains(card.id) {
-            failures.append(.uncitedSourceCard(cardID: card.id))
-        }
 
         return failures
     }

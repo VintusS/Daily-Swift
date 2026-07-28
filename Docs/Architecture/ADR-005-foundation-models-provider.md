@@ -41,19 +41,46 @@ Engine. Reserve that name for the production boundary. It exposes:
 - stable failure categories suitable for recovery and private metrics.
 
 The spike client, and a future Apple adapter if accepted, perform platform
-availability checks and typed generation. They do not decide whether content is
-valid or learner-ready. Schema, citation, source identity, API/version, answer
-determinism, and duplicate validation stay in provider-independent services.
-Only candidates whose nested artifacts pass every applicable validator may
-cross the presentation gate.
+availability checks and schema-constrained generation mapped into typed domain
+artifacts. They do not decide whether content is valid or learner-ready.
+Schema, citation, source identity, API/version, answer determinism, and
+duplicate validation stay in provider-independent services. Only candidates
+whose nested artifacts pass every applicable validator may cross the
+presentation gate.
 
 The current spike implements only the structural subset: source identity and
-content hashes, citation resolution and coverage, exact requested version tags,
-unique choice identifiers and normalized text, and one referenced correct
-choice. It does not verify semantic API correctness, compilation, or
-semantically equivalent distractors. Those candidates remain experimental; a
-later generated-content trust record must define the additional deterministic
-evidence required for production presentation.
+content hashes, at least one resolvable citation per nested artifact, exact
+requested version tags, unique choice identifiers and normalized text, and one
+referenced correct choice. It does not require every supplied card to be cited:
+an unused input is not missing provenance, and forcing a citation would
+incentivize unsupported attribution. It does not verify semantic API
+correctness, compilation, or semantically equivalent distractors. Those
+candidates remain experimental; a later generated-content trust record must
+define the additional deterministic evidence required for production
+presentation.
+
+The adapter treats version metadata and identities as application-owned. It
+stamps requested platform versions, builds a runtime schema whose citation
+range matches the actual source-card count, maps guided citation numbers to
+exact source-card identities, and derives stable choice identities from a
+guided answer index. Unknown citation numbers, missing citations, duplicate
+citations, duplicate answer text, or an invalid answer reference still fail
+closed before presentation.
+
+Version ownership remains explicit and independent:
+
+- domain artifact schema version 1 describes the post-mapping application
+  contract;
+- prompt version `structured-generation-v2` describes the instruction and
+  source-card rendering contract;
+- provider candidate schema version 2 describes the runtime
+  `DynamicGenerationSchema` decoded before domain mapping.
+
+Changing one version does not silently change either of the others.
+
+The public framework does not expose an exact system-model build identifier.
+The spike therefore records the default provider plus runtime OS version as a
+surrogate label; it must not be presented as the model's exact version.
 
 ### Availability mapping
 
@@ -91,8 +118,13 @@ presented.
 ### Privacy and provenance
 
 - Requests remain on device.
-- Source cards are bounded, explicitly delimited untrusted data.
+- Source-card text, title, and location are bounded, JSON-encoded inside one
+  explicitly delimited untrusted-data boundary, and decoded losslessly; only
+  the application-assigned citation number remains outside that boundary.
 - Citation identities are assigned by the application.
+- Privacy-safe diagnostic categories may identify a failed validation rule, but
+  never include source identities, source text, prompt bodies, or generated
+  artifact text.
 - Logs may contain stable categories, counts, timing, memory, and thermal
   observations, but never source text, prompt bodies, generated artifact bodies,
   or learner data.
@@ -100,10 +132,12 @@ presented.
 
 ### Accessibility
 
-Availability, progress, cancellation, rejection, and fallback have semantic
-text, ordered focus, and concise VoiceOver announcements. State does not rely on
-color or motion. Status and recovery actions support accessibility text sizes
-and Reduce Motion. Long generation cannot block deterministic learning.
+Availability, progress, cancellation, rejection, and fallback must have
+semantic text, ordered focus, and concise VoiceOver announcements. State must
+not rely on color or motion. Status and recovery actions must support
+accessibility text sizes and Reduce Motion. Long generation must not block
+deterministic learning. Code-level semantics exist; manual assistive-technology
+verification remains pending in the evidence record.
 
 ## Decision gate
 
@@ -114,15 +148,18 @@ is complete.
   artifacts; 100% of invalid or uncited results blocked; warm p95 latency at or
   below 20 seconds; at least 4 bounded source cards; cancellation returns to
   stable UI within 1 second and a subsequent request succeeds; no memory
-  termination or critical thermal state.
-- **Constrained go:** 70–89% first-pass acceptance, warm p95 at or below 45
-  seconds, only 1–2 practical source cards, or serious thermal pressure.
-  Generation is limited or scheduled opportunistically, and deterministic
-  lessons remain the default fallback.
+  termination and no serious or critical thermal state.
+- **Constrained go:** 70–89% first-pass acceptance; warm p95 above 20 seconds
+  and at or below 45 seconds; only 1–3 practical source cards; stable
+  cancellation above 1 second and at or below 3 seconds followed by a
+  successful request; or serious but not critical thermal pressure. Generation
+  is limited or scheduled opportunistically, and deterministic lessons remain
+  the default fallback.
 - **No-go:** below 70% first-pass acceptance; any invalid artifact reaches
-  presentation; target-device unavailability; state corruption after
-  cancellation or repetition; repeated critical thermal state; or memory
-  termination.
+  presentation; warm p95 above 45 seconds; no validated result from one bounded
+  source card; target-device unavailability; cancellation above 3 seconds, a
+  failed subsequent request, or state corruption after cancellation or
+  repetition; any critical thermal state; or memory termination.
 
 Until this record is Accepted, production feature work must not depend on the
 Apple adapter. A no-go outcome retains deterministic content and removes or
@@ -175,8 +212,8 @@ there.
 
 - Typed artifacts and failures require explicit cross-boundary mappings.
 - Provider-independent validators add work before generated content is shown.
-- Model and prompt updates require the benchmark and decision evidence to be
-  revisited.
+- Model, prompt, or provider-candidate-schema updates require the benchmark and
+  decision evidence to be revisited.
 - The abstraction must remain narrow to avoid speculative adapters.
 
 ## Verification
@@ -197,8 +234,9 @@ Before changing this record to Accepted:
 Device-dependent verification is currently **not run**.
 
 The deterministic spike implementation, Debug and Release simulator builds, and
-the 20-test iPhone 17 / iOS 26.5 simulator suite pass. This evidence validates
-the proposed seam and presentation gate only; it does not accept the provider.
+the 28-test iPhone 17 / iOS 26.5 simulator suite pass. The suite contains 27
+unit tests and one UI smoke test. This evidence validates the proposed seam and
+presentation gate only; it does not accept the provider.
 
 ## Residual risks
 

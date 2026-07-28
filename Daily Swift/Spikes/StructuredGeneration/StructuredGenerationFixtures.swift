@@ -70,14 +70,14 @@ enum StructuredGenerationFixtures {
         difficulty: .intermediate,
         swiftVersion: "6",
         minimumIOSVersion: "26.0",
-        promptVersion: "structured-generation-v1",
+        promptVersion: "structured-generation-v2",
         schemaVersion: 1,
         sourceCards: sourceCards
     )
 
     static let validArtifact = StructuredGenerationArtifact(
         schemaVersion: 1,
-        promptVersion: "structured-generation-v1",
+        promptVersion: "structured-generation-v2",
         modelVersion: "deterministic-fixture-v1",
         swiftVersion: "6",
         minimumIOSVersion: "26.0",
@@ -136,7 +136,7 @@ enum StructuredGenerationFixtures {
 
     static let invalidArtifact = StructuredGenerationArtifact(
         schemaVersion: 1,
-        promptVersion: "structured-generation-v1",
+        promptVersion: "structured-generation-v2",
         modelVersion: "deterministic-fixture-v1",
         swiftVersion: "6",
         minimumIOSVersion: "26.0",
