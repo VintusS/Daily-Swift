@@ -13,6 +13,7 @@ struct DailySwiftApp: App {
     private let environment: AppEnvironment
     private let rootViewModel: AppRootViewModel
     private let learningStudioViewModel: LearningStudioViewModel
+    private let sourceLibraryViewModel: SourceLibraryViewModel
 
     init() {
         let environment = AppEnvironment.live()
@@ -20,6 +21,8 @@ struct DailySwiftApp: App {
         rootViewModel = environment.makeRootViewModel()
         learningStudioViewModel =
             environment.makeLearningStudioViewModel()
+        sourceLibraryViewModel =
+            environment.makeSourceLibraryViewModel()
     }
 
     var body: some Scene {
@@ -27,6 +30,7 @@ struct DailySwiftApp: App {
             ContentView(
                 rootViewModel: rootViewModel,
                 learningStudioViewModel: learningStudioViewModel,
+                sourceLibraryViewModel: sourceLibraryViewModel,
                 launchConfiguration: environment.launchConfiguration
             )
         }

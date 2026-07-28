@@ -78,8 +78,8 @@ struct PrivacyAndDataView: View {
 
                     Text(
                         isLearningSessionTemporary
-                            ? "Clearing the temporary session removes only its in-memory activity; it does not modify the unavailable persistent store. This screen does not claim that later import, sync, or export features are complete."
-                            : "Resetting learning progress removes only these local studio records. This screen does not claim that later import, sync, or export features are complete."
+                            ? "Clearing the temporary session removes only its in-memory activity; it does not modify the unavailable persistent store. TXT and Markdown imports have separate local deletion; PDF, retrieval, sync, and export remain later capabilities."
+                            : "Resetting learning progress removes only these local studio records. TXT and Markdown imports have separate local deletion; PDF, retrieval, sync, and export remain later capabilities."
                     )
                     .font(StudioTokens.Typography.caption)
                     .foregroundStyle(StudioTokens.Color.secondaryText)

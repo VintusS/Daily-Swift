@@ -122,6 +122,7 @@ struct AppRouteAndSnapshotTests {
                 "--reset-ui-testing-learning-progress",
                 "--app-shell-scenario=restoration-corrupt",
                 "--learning-studio-scenario=write-retry",
+                "--source-library-scenario=seeded",
                 "--open-structured-generation-spike",
             ]
         )
@@ -132,6 +133,7 @@ struct AppRouteAndSnapshotTests {
         #expect(configuration.shouldResetUITestingLearning)
         #expect(configuration.shellScenario == .restorationCorrupt)
         #expect(configuration.learningScenario == .writeRetry)
+        #expect(configuration.sourceScenario == .seeded)
     }
 
     @Test("UI testing defaults to isolated in-memory learning progress")
@@ -141,6 +143,7 @@ struct AppRouteAndSnapshotTests {
         )
 
         #expect(configuration.learningScenario == .empty)
+        #expect(configuration.sourceScenario == .empty)
         #expect(!configuration.shouldResetUITestingLearning)
     }
 

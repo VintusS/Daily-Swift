@@ -474,6 +474,175 @@ final class DailySwiftUITests: XCTestCase {
     }
 
     @MainActor
+    func testImportedSourceOpensExactCitationAndDeletes() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--ui-testing",
+            "--app-shell-scenario=ready",
+            "--learning-studio-scenario=empty",
+            "--source-library-scenario=seeded",
+        ]
+
+        app.launch()
+        app.tabBars.buttons["Library"].tap()
+        XCTAssertTrue(
+            app.navigationBars["Library"].waitForExistence(timeout: 5)
+        )
+        XCTAssertTrue(
+            app.buttons["source-library.import"]
+                .waitForExistence(timeout: 5),
+            "The native source-import action should be available."
+        )
+
+        let sourceRow = app.buttons[
+            "source.open.44444444-4444-4444-4444-444444444444"
+        ]
+        XCTAssertTrue(sourceRow.waitForExistence(timeout: 5))
+        sourceRow.tap()
+
+        XCTAssertTrue(
+            app.descendants(matching: .any)["source.detail"]
+                .waitForExistence(timeout: 5)
+        )
+        let detailScreenshot = XCTAttachment(
+            screenshot: app.screenshot()
+        )
+        detailScreenshot.name = "Imported source detail"
+        detailScreenshot.lifetime = .keepAlways
+        add(detailScreenshot)
+        app.buttons["source.open-citation.0"].tap()
+
+        XCTAssertTrue(
+            app.descendants(matching: .any)["citation.reader"]
+                .waitForExistence(timeout: 5)
+        )
+        XCTAssertTrue(
+            app.staticTexts["Exact stored passage"]
+                .waitForExistence(timeout: 5)
+        )
+        XCTAssertTrue(app.staticTexts["Verified offline"].exists)
+        let citationScreenshot = XCTAttachment(
+            screenshot: app.screenshot()
+        )
+        citationScreenshot.name = "Exact offline citation"
+        citationScreenshot.lifetime = .keepAlways
+        add(citationScreenshot)
+
+        app.navigationBars.buttons["Source"].tap()
+        XCTAssertTrue(
+            app.descendants(matching: .any)["source.detail"]
+                .waitForExistence(timeout: 5)
+        )
+        let deleteButton = app.buttons["source.delete"]
+        for _ in 0..<3 where !deleteButton.isHittable {
+            app.swipeUp()
+        }
+        XCTAssertTrue(deleteButton.isHittable)
+        deleteButton.tap()
+        app.buttons["source.confirm-delete"].firstMatch.tap()
+
+        XCTAssertTrue(
+            app.descendants(matching: .any)["source-library.empty"]
+                .waitForExistence(timeout: 5),
+            "Cascading deletion should return to the empty imported-source library."
+        )
+    }
+
+    @MainActor
+    func testSourceLibraryRestoreFailureCanRetry() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--ui-testing",
+            "--app-shell-scenario=ready",
+            "--learning-studio-scenario=empty",
+            "--source-library-scenario=restore-retry",
+        ]
+
+        app.launch()
+        app.tabBars.buttons["Library"].tap()
+
+        let retry = app.buttons["source-library.retry"]
+        XCTAssertTrue(retry.waitForExistence(timeout: 5))
+        retry.tap()
+
+        XCTAssertTrue(
+            app.descendants(matching: .any)["source-library.empty"]
+                .waitForExistence(timeout: 5)
+        )
+    }
+
+    @MainActor
+    func testSourceImporterCanBeCancelledWithoutChangingLibrary() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--ui-testing",
+            "--app-shell-scenario=ready",
+            "--learning-studio-scenario=empty",
+            "--source-library-scenario=empty",
+        ]
+
+        app.launch()
+        app.tabBars.buttons["Library"].tap()
+        let importButton = app.buttons["source-library.import"]
+        XCTAssertTrue(importButton.waitForExistence(timeout: 5))
+        importButton.tap()
+
+        let cancelButton = app.buttons["Cancel"].firstMatch
+        XCTAssertTrue(
+            cancelButton.waitForExistence(timeout: 5),
+            "The native document picker should present a cancellation action."
+        )
+        cancelButton.tap()
+
+        XCTAssertTrue(
+            app.staticTexts["Import cancelled"]
+                .waitForExistence(timeout: 5)
+        )
+        XCTAssertTrue(
+            app.descendants(matching: .any)["source-library.empty"]
+                .exists
+        )
+    }
+
+    @MainActor
+    func testImportedSourceReflowsInDarkAccessibilityText() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--ui-testing",
+            "--app-shell-scenario=ready",
+            "--learning-studio-scenario=empty",
+            "--source-library-scenario=seeded",
+            "-AppleInterfaceStyle",
+            "Dark",
+            "-UIPreferredContentSizeCategoryName",
+            "UICTContentSizeCategoryAccessibilityXXXL",
+        ]
+
+        app.launch()
+        app.tabBars.buttons["Library"].tap()
+        let sourceRow = app.buttons[
+            "source.open.44444444-4444-4444-4444-444444444444"
+        ]
+        XCTAssertTrue(sourceRow.waitForExistence(timeout: 5))
+        sourceRow.tap()
+
+        XCTAssertTrue(
+            app.descendants(matching: .any)["source.detail"]
+                .waitForExistence(timeout: 5)
+        )
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "Imported source dark accessibility XXXL"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+
+        let citationButton = app.buttons["source.open-citation.0"]
+        for _ in 0..<4 where !citationButton.exists {
+            app.swipeUp()
+        }
+        XCTAssertTrue(citationButton.waitForExistence(timeout: 5))
+    }
+
+    @MainActor
     func testArticleStateRestoresAcrossRelaunch() throws {
         let app = XCUIApplication()
         app.launchArguments = [

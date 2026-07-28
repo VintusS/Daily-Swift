@@ -4,14 +4,19 @@ import UIKit
 @MainActor
 struct LearningStudioView: View {
     @State private var viewModel: LearningStudioViewModel
+    @State private var sourceLibraryViewModel: SourceLibraryViewModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let onPrivacy: () -> Void
 
     init(
         viewModel: LearningStudioViewModel,
+        sourceLibraryViewModel: SourceLibraryViewModel,
         onPrivacy: @escaping () -> Void
     ) {
         _viewModel = State(initialValue: viewModel)
+        _sourceLibraryViewModel = State(
+            initialValue: sourceLibraryViewModel
+        )
         self.onPrivacy = onPrivacy
     }
 
@@ -116,7 +121,9 @@ struct LearningStudioView: View {
                 LibraryView(
                     catalog: viewModel.catalog,
                     snapshot: viewModel.snapshot,
-                    onOpenArticle: viewModel.openArticle
+                    sourceLibraryViewModel: sourceLibraryViewModel,
+                    onOpenArticle: viewModel.openArticle,
+                    onOpenSource: viewModel.router.openSource
                 )
                 .navigationDestination(
                     for: LearningStudioRoute.self,
@@ -283,6 +290,38 @@ struct LearningStudioView: View {
             } else {
                 MissingLearningContentView(kind: "challenge")
             }
+
+        case let .sourceDocument(sourceID):
+            if let document = sourceLibraryViewModel.document(
+                id: sourceID
+            ) {
+                SourceDocumentDetailView(
+                    document: document,
+                    chunks: sourceLibraryViewModel.chunks(
+                        for: sourceID
+                    ),
+                    isDeleting:
+                        sourceLibraryViewModel.deletingSourceID
+                            == sourceID,
+                    onOpenCitation:
+                        viewModel.router.openCitation,
+                    onDelete: {
+                        await sourceLibraryViewModel.delete(
+                            sourceID: sourceID
+                        )
+                    },
+                    onDeleted:
+                        viewModel.router.returnToLibraryRoot
+                )
+            } else {
+                MissingLearningContentView(kind: "source")
+            }
+
+        case let .sourceCitation(citation):
+            SourceCitationReaderView(
+                citation: citation,
+                resolve: sourceLibraryViewModel.resolve
+            )
 
         case .preferences:
             InteractionPreferencesView(

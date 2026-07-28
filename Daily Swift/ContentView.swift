@@ -11,6 +11,7 @@ import SwiftUI
 struct ContentView: View {
     private let rootViewModel: AppRootViewModel
     private let learningStudioViewModel: LearningStudioViewModel
+    private let sourceLibraryViewModel: SourceLibraryViewModel
     private let launchConfiguration: AppLaunchConfiguration
 
     init(environment: AppEnvironment = .live()) {
@@ -18,6 +19,8 @@ struct ContentView: View {
             rootViewModel: environment.makeRootViewModel(),
             learningStudioViewModel:
                 environment.makeLearningStudioViewModel(),
+            sourceLibraryViewModel:
+                environment.makeSourceLibraryViewModel(),
             launchConfiguration: environment.launchConfiguration
         )
     }
@@ -25,10 +28,12 @@ struct ContentView: View {
     init(
         rootViewModel: AppRootViewModel,
         learningStudioViewModel: LearningStudioViewModel,
+        sourceLibraryViewModel: SourceLibraryViewModel,
         launchConfiguration: AppLaunchConfiguration
     ) {
         self.rootViewModel = rootViewModel
         self.learningStudioViewModel = learningStudioViewModel
+        self.sourceLibraryViewModel = sourceLibraryViewModel
         self.launchConfiguration = launchConfiguration
     }
 
@@ -39,13 +44,15 @@ struct ContentView: View {
         } else {
             AppRootView(
                 viewModel: rootViewModel,
-                learningStudioViewModel: learningStudioViewModel
+                learningStudioViewModel: learningStudioViewModel,
+                sourceLibraryViewModel: sourceLibraryViewModel
             )
         }
 #else
         AppRootView(
             viewModel: rootViewModel,
-            learningStudioViewModel: learningStudioViewModel
+            learningStudioViewModel: learningStudioViewModel,
+            sourceLibraryViewModel: sourceLibraryViewModel
         )
 #endif
     }
