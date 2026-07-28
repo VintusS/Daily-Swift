@@ -15,7 +15,7 @@ work packet. Accepted records take precedence over execution plans.
 | Record | Status | Decision |
 |---|---|---|
 | [ADR-000](ADR-000-repository-baseline.md) | Accepted | Repository baseline, platform, naming, signing, and test conventions |
-| ADR-001 | Planned | Product architecture and MVVM boundaries |
+| [ADR-001](ADR-001-product-architecture.md) | Accepted | Product architecture, explicit composition, typed production routing, and root-state boundaries |
 | ADR-002 | Planned | SwiftData and file-storage split |
 | ADR-003 | Planned | CloudKit sync and conflict resolution |
 | ADR-004 | Planned | Competency graph and mastery model |
