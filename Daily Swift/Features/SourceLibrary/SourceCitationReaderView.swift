@@ -5,6 +5,7 @@ struct SourceCitationReaderView: View {
     let resolve: (SourceCitation) async throws -> ResolvedSourceCitation
 
     @State private var state: CitationReaderState = .loading
+    @State private var pdfPage: PDFPagePresentation?
     @AccessibilityFocusState private var passageIsFocused: Bool
 
     var body: some View {
@@ -40,6 +41,12 @@ struct SourceCitationReaderView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task(id: citation) {
             await load()
+        }
+        .sheet(item: $pdfPage) { page in
+            PDFPageReaderView(
+                fileURL: page.fileURL,
+                pageNumber: page.pageNumber
+            )
         }
         .accessibilityIdentifier("citation.reader")
     }
@@ -109,10 +116,34 @@ struct SourceCitationReaderView: View {
                     }
                 }
 
+                if let originalFileURL = resolved.originalFileURL,
+                   let pageNumber = resolved.citation.location.startPage {
+                    Button {
+                        pdfPage = PDFPagePresentation(
+                            fileURL: originalFileURL,
+                            pageNumber: pageNumber
+                        )
+                    } label: {
+                        Label(
+                            "Open \(resolved.citation.location.pageLabel ?? "PDF page")",
+                            systemImage: "doc.richtext"
+                        )
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .accessibilityHint(
+                        "Opens the locally stored original PDF at the cited page."
+                    )
+                    .accessibilityIdentifier("citation.open-pdf-page")
+                }
+
                 StatusNotice(
                     role: .information,
                     title: "Verified offline",
-                    message: "This passage matches the stored chunk hash and exact normalized-text range."
+                    message: resolved.document.format == .pdf
+                        ? "This passage matches the stored chunk hash, normalized-text range, and PDF page provenance."
+                        : "This passage matches the stored chunk hash and exact normalized-text range."
                 )
             }
             .frame(maxWidth: 720)
@@ -126,6 +157,12 @@ struct SourceCitationReaderView: View {
     private func locationBadges(
         _ location: SourceLocation
     ) -> some View {
+        if let pageLabel = location.pageLabel {
+            LearningBadge(
+                pageLabel,
+                symbol: "doc.richtext"
+            )
+        }
         LearningBadge(
             location.lineLabel,
             symbol: "list.number"
@@ -153,4 +190,13 @@ private enum CitationReaderState: Equatable {
     case loading
     case content(ResolvedSourceCitation)
     case failed(SourceLibraryFailure)
+}
+
+private struct PDFPagePresentation: Identifiable, Equatable {
+    let fileURL: URL
+    let pageNumber: Int
+
+    var id: String {
+        "\(fileURL.path)#\(pageNumber)"
+    }
 }

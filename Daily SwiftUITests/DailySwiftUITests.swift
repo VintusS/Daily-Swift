@@ -549,6 +549,109 @@ final class DailySwiftUITests: XCTestCase {
     }
 
     @MainActor
+    func testImportedPDFOpensExactPageOffline() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--ui-testing",
+            "--app-shell-scenario=ready",
+            "--learning-studio-scenario=empty",
+            "--source-library-scenario=seeded-pdf",
+        ]
+
+        app.launch()
+        app.tabBars.buttons["Library"].tap()
+
+        let sourceRow = app.buttons[
+            "source.open.45454545-4545-4545-4545-454545454545"
+        ]
+        XCTAssertTrue(sourceRow.waitForExistence(timeout: 5))
+        sourceRow.tap()
+
+        let citationButton = app.buttons["source.open-citation.0"]
+        XCTAssertTrue(citationButton.waitForExistence(timeout: 5))
+        citationButton.tap()
+
+        XCTAssertTrue(
+            app.staticTexts["Page 1"].waitForExistence(timeout: 5)
+        )
+        let openPageButton = app.buttons["citation.open-pdf-page"]
+        XCTAssertTrue(openPageButton.waitForExistence(timeout: 5))
+
+        let citationScreenshot = XCTAttachment(
+            screenshot: app.screenshot()
+        )
+        citationScreenshot.name = "Exact PDF citation with page provenance"
+        citationScreenshot.lifetime = .keepAlways
+        add(citationScreenshot)
+
+        openPageButton.tap()
+        XCTAssertTrue(
+            app.descendants(matching: .any)["citation.pdf-page"]
+                .waitForExistence(timeout: 5)
+        )
+        XCTAssertTrue(
+            app.navigationBars["Original PDF · Page 1"]
+                .waitForExistence(timeout: 5)
+        )
+
+        let pageScreenshot = XCTAttachment(
+            screenshot: app.screenshot()
+        )
+        pageScreenshot.name = "Locally stored original PDF page"
+        pageScreenshot.lifetime = .keepAlways
+        add(pageScreenshot)
+    }
+
+    @MainActor
+    func testImportedPDFReflowsInDarkAccessibilityText() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--ui-testing",
+            "--app-shell-scenario=ready",
+            "--learning-studio-scenario=empty",
+            "--source-library-scenario=seeded-pdf",
+            "-AppleInterfaceStyle",
+            "Dark",
+            "-UIPreferredContentSizeCategoryName",
+            "UICTContentSizeCategoryAccessibilityXXXL",
+            "-UIAccessibilityDarkerSystemColorsEnabled",
+            "YES",
+            "-UIAccessibilityReduceMotionEnabled",
+            "YES",
+        ]
+
+        app.launch()
+        app.tabBars.buttons["Library"].tap()
+        let sourceRow = app.buttons[
+            "source.open.45454545-4545-4545-4545-454545454545"
+        ]
+        XCTAssertTrue(sourceRow.waitForExistence(timeout: 5))
+        sourceRow.tap()
+
+        let citationButton = app.buttons["source.open-citation.0"]
+        for _ in 0..<4 where !citationButton.exists {
+            app.swipeUp()
+        }
+        XCTAssertTrue(citationButton.waitForExistence(timeout: 5))
+        citationButton.tap()
+
+        XCTAssertTrue(
+            app.staticTexts["Page 1"].waitForExistence(timeout: 5)
+        )
+        let openPageButton = app.buttons["citation.open-pdf-page"]
+        for _ in 0..<4 where !openPageButton.isHittable {
+            app.swipeUp()
+        }
+        XCTAssertTrue(openPageButton.isHittable)
+
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name =
+            "PDF citation dark increased contrast accessibility XXXL"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+    }
+
+    @MainActor
     func testSourceLibraryRestoreFailureCanRetry() throws {
         let app = XCUIApplication()
         app.launchArguments = [

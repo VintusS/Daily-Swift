@@ -16,29 +16,34 @@ actor SourceLibraryService: SourceLibraryServing {
     private let rootURL: URL
     private let now: @Sendable () -> Date
     private let makeSourceID: @Sendable () -> UUID
+    private let pdfTextExtractor: any PDFTextExtracting
     private let fileManager = FileManager.default
 
     init(
         metadataStore: any SourceLibraryMetadataStoring,
         rootURL: URL,
         now: @escaping @Sendable () -> Date = { .now },
-        makeSourceID: @escaping @Sendable () -> UUID = UUID.init
+        makeSourceID: @escaping @Sendable () -> UUID = UUID.init,
+        pdfTextExtractor: any PDFTextExtracting = PDFKitTextExtractor()
     ) {
         self.metadataStore = metadataStore
         self.rootURL = rootURL
         self.now = now
         self.makeSourceID = makeSourceID
+        self.pdfTextExtractor = pdfTextExtractor
     }
 
     func restore() async throws -> SourceLibrarySnapshot {
         try cleanInterruptedFileOperations()
-        return try await metadataStore.restore()
+        let snapshot = try await metadataStore.restore()
+        return try await hydratePageLocations(in: snapshot)
     }
 
     func importSource(
         _ request: SourceImportRequest
     ) async throws -> SourceDocument {
         let metadata = try request.metadata.validated()
+        try ensureImportIsActive()
         let format = try SourceDocumentFormat.detect(
             from: request.fileURL
         )
@@ -66,23 +71,29 @@ actor SourceLibraryService: SourceLibraryServing {
             throw SourceLibraryFailure.fileTooLarge
         }
 
-        let data: Data
-        do {
-            data = try Data(
-                contentsOf: request.fileURL,
-                options: .mappedIfSafe
-            )
-        } catch {
-            throw SourceLibraryFailure.unreadableFile
+        let fileByteCount: Int
+        if let fileSize = values.fileSize {
+            fileByteCount = fileSize
+        } else {
+            do {
+                fileByteCount = try Data(
+                    contentsOf: request.fileURL,
+                    options: .mappedIfSafe
+                ).count
+            } catch {
+                throw SourceLibraryFailure.unreadableFile
+            }
         }
-        guard data.count <= Self.maximumFileByteCount else {
+        guard fileByteCount <= Self.maximumFileByteCount else {
             throw SourceLibraryFailure.fileTooLarge
         }
-        guard let decoded = String(data: data, encoding: .utf8) else {
-            throw SourceLibraryFailure.invalidEncoding
-        }
 
-        let normalizedText = SourceTextProcessor.normalize(decoded)
+        let normalizedSource = try await normalizedSource(
+            at: request.fileURL,
+            format: format
+        )
+        try ensureImportIsActive()
+        let normalizedText = normalizedSource.text
         guard !normalizedText.isEmpty else {
             throw SourceLibraryFailure.emptyDocument
         }
@@ -98,15 +109,22 @@ actor SourceLibraryService: SourceLibraryServing {
         }
 
         let sourceID = makeSourceID()
-        let chunks = SourceTextProcessor.chunks(
+        var chunks = SourceTextProcessor.chunks(
             sourceID: sourceID,
             sourceContentHash: sourceHash,
             normalizedText: normalizedText,
             format: format
         )
+        if let pageMap = normalizedSource.pageMap {
+            chunks = SourceTextProcessor.addingPageLocations(
+                to: chunks,
+                pageMap: pageMap
+            )
+        }
         guard !chunks.isEmpty else {
             throw SourceLibraryFailure.emptyDocument
         }
+        try ensureImportIsActive()
 
         let document = SourceDocument(
             id: sourceID,
@@ -118,15 +136,17 @@ actor SourceLibraryService: SourceLibraryServing {
             contentHash: sourceHash,
             importedAt: now(),
             format: format,
-            byteCount: data.count
+            byteCount: fileByteCount
         )
 
         try storeFiles(
             sourceURL: request.fileURL,
             normalizedText: normalizedText,
-            document: document
+            document: document,
+            pageMap: normalizedSource.pageMap
         )
         do {
+            try ensureImportIsActive()
             try await metadataStore.insert(
                 document: document,
                 chunks: chunks
@@ -156,7 +176,11 @@ actor SourceLibraryService: SourceLibraryServing {
         ) else {
             throw SourceLibraryFailure.citationMissing
         }
-        guard chunk.citation == citation else {
+        let resolvedChunk = try await hydratedChunk(
+            chunk,
+            document: document
+        )
+        guard resolvedChunk.citation == citation else {
             throw SourceLibraryFailure.citationInvalid
         }
 
@@ -178,10 +202,22 @@ actor SourceLibraryService: SourceLibraryServing {
             throw SourceLibraryFailure.citationInvalid
         }
 
+        let storedOriginalURL: URL?
+        if document.format == .pdf {
+            let url = originalURL(for: document)
+            guard fileManager.fileExists(atPath: url.path) else {
+                throw SourceLibraryFailure.citationMissing
+            }
+            storedOriginalURL = url
+        } else {
+            storedOriginalURL = nil
+        }
+
         return ResolvedSourceCitation(
             document: document,
             citation: citation,
-            excerpt: excerpt
+            excerpt: excerpt,
+            originalFileURL: storedOriginalURL
         )
     }
 
@@ -251,7 +287,8 @@ actor SourceLibraryService: SourceLibraryServing {
     private func storeFiles(
         sourceURL: URL,
         normalizedText: String,
-        document: SourceDocument
+        document: SourceDocument,
+        pageMap: SourcePageMap?
     ) throws(SourceLibraryFailure) {
         let destinationDirectory = directoryURL(for: document.id)
         let stagingDirectory = rootURL.appendingPathComponent(
@@ -284,6 +321,14 @@ actor SourceLibraryService: SourceLibraryServing {
                 ),
                 options: .atomic
             )
+            if let pageMap {
+                try JSONEncoder().encode(pageMap).write(
+                    to: stagingDirectory.appendingPathComponent(
+                        "page-map.json"
+                    ),
+                    options: .atomic
+                )
+            }
             try fileManager.moveItem(
                 at: stagingDirectory,
                 to: destinationDirectory
@@ -305,6 +350,175 @@ actor SourceLibraryService: SourceLibraryServing {
         directoryURL(for: sourceID)
             .appendingPathComponent("normalized.txt")
     }
+
+    private func originalURL(for document: SourceDocument) -> URL {
+        directoryURL(for: document.id)
+            .appendingPathComponent(
+                "original.\(document.format.storageExtension)"
+            )
+    }
+
+    private func pageMapURL(for sourceID: UUID) -> URL {
+        directoryURL(for: sourceID)
+            .appendingPathComponent("page-map.json")
+    }
+
+    private func normalizedSource(
+        at url: URL,
+        format: SourceDocumentFormat
+    ) async throws(SourceLibraryFailure) -> NormalizedSource {
+        switch format {
+        case .plainText, .markdown:
+            let data: Data
+            do {
+                data = try Data(
+                    contentsOf: url,
+                    options: .mappedIfSafe
+                )
+            } catch {
+                throw .unreadableFile
+            }
+            guard let decoded = String(
+                data: data,
+                encoding: .utf8
+            ) else {
+                throw .invalidEncoding
+            }
+            return NormalizedSource(
+                text: SourceTextProcessor.normalize(decoded),
+                pageMap: nil
+            )
+
+        case .pdf:
+            let extraction = try await pdfTextExtractor.extract(
+                from: url
+            )
+            let normalized = SourceTextProcessor.normalize(
+                extraction: extraction
+            )
+            return NormalizedSource(
+                text: normalized.text,
+                pageMap: normalized.pageMap
+            )
+        }
+    }
+
+    private func hydratePageLocations(
+        in snapshot: SourceLibrarySnapshot
+    ) async throws(SourceLibraryFailure) -> SourceLibrarySnapshot {
+        var hydratedChunks = snapshot.chunks
+        for document in snapshot.documents where document.format == .pdf {
+            let pageMap = try await loadPageMap(for: document)
+            let sourceChunks = hydratedChunks.filter {
+                $0.sourceID == document.id
+            }
+            let replacements = Dictionary(
+                uniqueKeysWithValues: SourceTextProcessor
+                    .addingPageLocations(
+                        to: sourceChunks,
+                        pageMap: pageMap
+                    )
+                    .map { ($0.id, $0) }
+            )
+            hydratedChunks = hydratedChunks.map {
+                replacements[$0.id] ?? $0
+            }
+        }
+        return SourceLibrarySnapshot(
+            documents: snapshot.documents,
+            chunks: hydratedChunks
+        )
+    }
+
+    private func hydratedChunk(
+        _ chunk: SourceChunk,
+        document: SourceDocument
+    ) async throws(SourceLibraryFailure) -> SourceChunk {
+        guard document.format == .pdf else {
+            return chunk
+        }
+        let pageMap = try await loadPageMap(for: document)
+        guard let hydrated = SourceTextProcessor
+            .addingPageLocations(
+                to: [chunk],
+                pageMap: pageMap
+            )
+            .first,
+            hydrated.location.pageLabel != nil else {
+            throw .citationInvalid
+        }
+        return hydrated
+    }
+
+    private func loadPageMap(
+        for document: SourceDocument
+    ) async throws(SourceLibraryFailure) -> SourcePageMap {
+        do {
+            let data = try Data(
+                contentsOf: pageMapURL(for: document.id)
+            )
+            let pageMap = try JSONDecoder().decode(
+                SourcePageMap.self,
+                from: data
+            )
+            let normalizedText = try String(
+                contentsOf: normalizedURL(for: document.id),
+                encoding: .utf8
+            )
+            guard pageMap.isValid(
+                characterCount: normalizedText.count
+            ) else {
+                throw SourceLibraryFailure.readFailed
+            }
+            return pageMap
+        } catch {
+            return try await rebuildPageMap(for: document)
+        }
+    }
+
+    private func rebuildPageMap(
+        for document: SourceDocument
+    ) async throws(SourceLibraryFailure) -> SourcePageMap {
+        guard document.format == .pdf else {
+            throw .readFailed
+        }
+        let originalURL = originalURL(for: document)
+        guard fileManager.fileExists(atPath: originalURL.path) else {
+            throw .readFailed
+        }
+        let extraction = try await pdfTextExtractor.extract(
+            from: originalURL
+        )
+        let normalized = SourceTextProcessor.normalize(
+            extraction: extraction
+        )
+        guard SourceTextProcessor.contentHash(for: normalized.text)
+            == document.contentHash else {
+            throw .readFailed
+        }
+
+        do {
+            try JSONEncoder().encode(normalized.pageMap).write(
+                to: pageMapURL(for: document.id),
+                options: .atomic
+            )
+            return normalized.pageMap
+        } catch {
+            throw .readFailed
+        }
+    }
+
+    private func ensureImportIsActive()
+        throws(SourceLibraryFailure) {
+        guard !Task.isCancelled else {
+            throw .importCancelled
+        }
+    }
+}
+
+private struct NormalizedSource {
+    let text: String
+    let pageMap: SourcePageMap?
 }
 
 actor UnavailableSourceLibraryService: SourceLibraryServing {

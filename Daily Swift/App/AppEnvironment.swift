@@ -25,6 +25,7 @@ struct AppLaunchConfiguration: Equatable, Sendable {
         case live
         case empty
         case seeded
+        case seededPDF = "seeded-pdf"
         case restoreRetry = "restore-retry"
     }
 
@@ -296,6 +297,8 @@ struct AppEnvironment {
                 return InMemorySourceLibraryService()
             case .seeded:
                 return SourceLibraryFixtures.service()
+            case .seededPDF:
+                return SourceLibraryFixtures.pdfService()
             case .restoreRetry:
                 return InMemorySourceLibraryService(
                     restoreOutcomes: [

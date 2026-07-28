@@ -91,4 +91,57 @@ struct SourceLibraryViewModelTests {
         #expect(viewModel.feedback == .deleted)
         #expect(viewModel.snapshot == .empty)
     }
+
+    @Test("Cancelling an in-flight PDF import reports cancellation")
+    func importCancellation() async throws {
+        let temporaryRoot = FileManager.default.temporaryDirectory
+            .appendingPathComponent(
+                "DailySwiftSourceCancellationTests-\(UUID().uuidString)",
+                isDirectory: true
+            )
+        defer {
+            try? FileManager.default.removeItem(at: temporaryRoot)
+        }
+        try FileManager.default.createDirectory(
+            at: temporaryRoot,
+            withIntermediateDirectories: true
+        )
+        let sourceURL = temporaryRoot.appendingPathComponent("slow.pdf")
+        try Data("%PDF synthetic fixture".utf8).write(to: sourceURL)
+        let service = InMemorySourceLibraryService(
+            pdfTextExtractor: ViewModelCancellablePDFTextExtractor()
+        )
+        let viewModel = SourceLibraryViewModel(service: service)
+        await viewModel.loadIfNeeded()
+        viewModel.receiveFileSelection(.success([sourceURL]))
+
+        let task = Task {
+            await viewModel.importPending(
+                metadata: SourceImportMetadata(
+                    title: "Slow PDF",
+                    author: nil,
+                    publisher: nil,
+                    rightsStatus: .publicDomain
+                )
+            )
+        }
+        await Task.yield()
+        task.cancel()
+        await task.value
+
+        #expect(viewModel.feedback == .cancelled)
+        #expect(viewModel.documents.isEmpty)
+        #expect(!viewModel.isImporting)
+    }
+}
+
+private struct ViewModelCancellablePDFTextExtractor: PDFTextExtracting {
+    func extract(
+        from url: URL
+    ) async throws(SourceLibraryFailure) -> PDFTextExtraction {
+        while !Task.isCancelled {
+            await Task.yield()
+        }
+        throw .importCancelled
+    }
 }
