@@ -11,6 +11,9 @@ struct ChallengePlayerView: View {
     @State private var selectedChoiceID: String?
     @State private var feedback: ChallengeFeedback?
     @State private var isSubmitting = false
+    @State private var choiceOrderSeed = UInt64.random(
+        in: UInt64.min...UInt64.max
+    )
     @AccessibilityFocusState private var promptIsFocused: Bool
     @AccessibilityFocusState private var feedbackIsFocused: Bool
 
@@ -41,7 +44,7 @@ struct ChallengePlayerView: View {
                 }
 
                 VStack(spacing: StudioTokens.Spacing.small) {
-                    ForEach(challenge.choices) { choice in
+                    ForEach(presentedChoices) { choice in
                         ChallengeChoiceButton(
                             choice: choice,
                             isSelected: selectedChoiceID == choice.id,
@@ -140,6 +143,13 @@ struct ChallengePlayerView: View {
                 feedback = updatedFeedback
             }
         }
+    }
+
+    private var presentedChoices: [ChallengeChoice] {
+        ChallengeChoiceOrderer.orderedChoices(
+            for: challenge,
+            seed: choiceOrderSeed
+        )
     }
 
     private var metadata: some View {
