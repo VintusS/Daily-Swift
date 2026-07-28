@@ -119,7 +119,9 @@ struct AppRouteAndSnapshotTests {
                 "DailySwift",
                 "--ui-testing",
                 "--reset-ui-testing-app-shell",
+                "--reset-ui-testing-learning-progress",
                 "--app-shell-scenario=restoration-corrupt",
+                "--learning-studio-scenario=write-retry",
                 "--open-structured-generation-spike",
             ]
         )
@@ -127,7 +129,19 @@ struct AppRouteAndSnapshotTests {
         #expect(configuration.isUITestingEnabled)
         #expect(configuration.isStructuredGenerationSpikeEnabled)
         #expect(configuration.shouldResetUITestingShell)
+        #expect(configuration.shouldResetUITestingLearning)
         #expect(configuration.shellScenario == .restorationCorrupt)
+        #expect(configuration.learningScenario == .writeRetry)
+    }
+
+    @Test("UI testing defaults to isolated in-memory learning progress")
+    func uiTestingLearningDefault() {
+        let configuration = AppLaunchConfiguration(
+            arguments: ["DailySwift", "--ui-testing"]
+        )
+
+        #expect(configuration.learningScenario == .empty)
+        #expect(!configuration.shouldResetUITestingLearning)
     }
 
     private func makeDefaultsFixture() -> (

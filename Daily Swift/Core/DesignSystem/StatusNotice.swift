@@ -55,7 +55,7 @@ struct StatusNotice: View {
         HStack(alignment: .top, spacing: StudioTokens.Spacing.small) {
             Image(systemName: role.symbolName)
                 .font(StudioTokens.Typography.sectionHeading)
-                .foregroundStyle(role.color)
+                .foregroundStyle(StudioTokens.Color.primaryText)
                 .accessibilityLabel(role.label)
 
             VStack(alignment: .leading, spacing: StudioTokens.Spacing.xxSmall) {
@@ -82,7 +82,7 @@ struct StatusNotice: View {
                     cornerRadius: StudioTokens.Radius.card,
                     style: .continuous
                 )
-                .stroke(StudioTokens.Color.separator, lineWidth: 1)
+                .stroke(role.color.opacity(0.55), lineWidth: 1)
             }
         }
         .accessibilityElement(children: .combine)

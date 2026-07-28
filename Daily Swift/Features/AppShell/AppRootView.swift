@@ -3,20 +3,22 @@ import SwiftUI
 @MainActor
 struct AppRootView: View {
     @State private var viewModel: AppRootViewModel
+    @State private var learningStudioViewModel: LearningStudioViewModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    init(viewModel: AppRootViewModel) {
+    init(
+        viewModel: AppRootViewModel,
+        learningStudioViewModel: LearningStudioViewModel
+    ) {
         _viewModel = State(initialValue: viewModel)
+        _learningStudioViewModel = State(
+            initialValue: learningStudioViewModel
+        )
     }
 
     var body: some View {
         ZStack {
-            NavigationStack(path: navigationPath) {
-                rootContent
-                    .navigationDestination(for: AppRoute.self) { route in
-                        destination(for: route)
-                    }
-            }
+            primaryContent
             .accessibilityHidden(recoverableFailure != nil)
 
             if let recoverableFailure {
@@ -42,6 +44,47 @@ struct AppRootView: View {
         )
     }
 
+    @ViewBuilder
+    private var primaryContent: some View {
+        switch viewModel.state {
+        case .ready:
+            LearningStudioView(
+                viewModel: learningStudioViewModel,
+                onPrivacy: {
+                    viewModel.navigate(to: .privacyAndData)
+                }
+            )
+            .sheet(isPresented: privacyPresentation) {
+                NavigationStack {
+                    PrivacyAndDataView(
+                        isLearningSessionTemporary:
+                            learningStudioViewModel.sessionMode
+                                == .temporary
+                    )
+                        .toolbar {
+                            ToolbarItem(placement: .confirmationAction) {
+                                Button("Done", action: dismissPrivacy)
+                                    .accessibilityIdentifier(
+                                        "privacy-and-data.done"
+                                    )
+                            }
+                        }
+                }
+            }
+
+        case .launching,
+             .restoring,
+             .firstRun,
+             .recoverableStorageFailure:
+            NavigationStack(path: navigationPath) {
+                shellContent
+                    .navigationDestination(for: AppRoute.self) { route in
+                        destination(for: route)
+                    }
+            }
+        }
+    }
+
     private var navigationPath: Binding<[AppRoute]> {
         Binding(
             get: { viewModel.router.path },
@@ -49,8 +92,24 @@ struct AppRootView: View {
         )
     }
 
+    private var privacyPresentation: Binding<Bool> {
+        Binding(
+            get: {
+                guard case .ready = viewModel.state else {
+                    return false
+                }
+                return viewModel.router.path.last == .privacyAndData
+            },
+            set: { isPresented in
+                if !isPresented {
+                    dismissPrivacy()
+                }
+            }
+        )
+    }
+
     @ViewBuilder
-    private var rootContent: some View {
+    private var shellContent: some View {
         switch viewModel.state {
         case .launching:
             ShellProgressView(
@@ -73,18 +132,24 @@ struct AppRootView: View {
                 }
             )
 
-        case let .ready(sessionMode):
-            ReadyStudioView(
-                sessionMode: sessionMode,
-                onPrivacy: {
-                    viewModel.navigate(to: .privacyAndData)
-                }
-            )
+        case .ready:
+            Color.clear
+                .accessibilityHidden(true)
 
         case .recoverableStorageFailure:
             Color.clear
                 .accessibilityHidden(true)
         }
+    }
+
+    private func dismissPrivacy() {
+        guard viewModel.router.path.last == .privacyAndData else {
+            return
+        }
+
+        var routes = viewModel.router.path
+        routes.removeLast()
+        viewModel.replaceNavigationPath(with: routes)
     }
 
     private var recoverableFailure: AppShellFailure? {
@@ -108,6 +173,10 @@ struct AppRootView: View {
     AppRootView(
         viewModel: AppRootViewModel(
             bootstrapService: InMemoryAppBootstrapService()
+        ),
+        learningStudioViewModel: LearningStudioViewModel(
+            catalog: SeedCurriculumProvider.catalog,
+            store: InMemoryLearningProgressStore()
         )
     )
 }
@@ -120,6 +189,10 @@ struct AppRootView: View {
                     hasCompletedFirstRun: true
                 )
             )
+        ),
+        learningStudioViewModel: LearningStudioViewModel(
+            catalog: SeedCurriculumProvider.catalog,
+            store: InMemoryLearningProgressStore()
         )
     )
     .preferredColorScheme(.dark)
@@ -131,6 +204,10 @@ struct AppRootView: View {
             bootstrapService: InMemoryAppBootstrapService(
                 restoreOutcomes: [.failure(.restorationCorrupt)]
             )
+        ),
+        learningStudioViewModel: LearningStudioViewModel(
+            catalog: SeedCurriculumProvider.catalog,
+            store: InMemoryLearningProgressStore()
         )
     )
     .environment(\.dynamicTypeSize, .accessibility3)

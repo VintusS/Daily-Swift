@@ -74,6 +74,38 @@ Debug and experimental destinations are deliberately excluded from
 `AppRouter`. This keeps the route and restoration contract identical in Debug
 and Release builds.
 
+### Native learning-studio tabs
+
+The owner-directed deterministic studio adds four useful top-level
+destinations: Today, Challenges, Library, and Progress. Use the native
+`TabView`; do not introduce a custom tab bar.
+
+Keep the root `AppRouter` and its version-1 shell snapshot responsible for
+root-level restored destinations such as the existing Privacy & Data route.
+Add a separate `@MainActor`, observable `LearningStudioRouter` for:
+
+- typed `LearningStudioTab` selection;
+- one typed path per tab so switching tabs preserves local navigation;
+- explicit cross-tab actions that select a tab and open an implemented
+  destination.
+
+The learning router stores stable content identifiers only. Current question
+state, selected answers, article bodies, progress records, and persistence
+models never enter navigation state.
+
+Packet 002 persists only the selected tab through the learning-settings
+repository accepted by ADR-002. Per-tab detail paths are deliberately
+session-local in this slice. Missing or retired content identifiers return to
+the affected tab root without failing app-shell restoration. This separation
+avoids a shell-snapshot schema change solely to activate the first useful
+native tabs.
+
+When the studio is ready, root-level routes are presented outside the tab
+stacks. Privacy & Data uses a native sheet backed by the existing root route,
+including restoration and dismissal persistence. The application must not
+wrap the tab-owned `NavigationStack` instances in another `NavigationStack`;
+doing so suppresses native toolbars and detail-path navigation.
+
 ### Root state ownership
 
 Use a dedicated `@MainActor`, observable root view model with an explicit state

@@ -1,6 +1,12 @@
 import SwiftUI
 
 struct PrivacyAndDataView: View {
+    let isLearningSessionTemporary: Bool
+
+    init(isLearningSessionTemporary: Bool = false) {
+        self.isLearningSessionTemporary = isLearningSessionTemporary
+    }
+
     var body: some View {
         ZStack {
             StudioBackground()
@@ -28,6 +34,14 @@ struct PrivacyAndDataView: View {
                     }
                     .accessibilityIdentifier("privacy-and-data.screen")
 
+                    if isLearningSessionTemporary {
+                        StatusNotice(
+                            role: .warning,
+                            title: "Temporary mode is active",
+                            message: "Learning changes are not being written to SwiftData and will disappear when the app closes."
+                        )
+                    }
+
                     StatusNotice(
                         role: .success,
                         title: "Private by default",
@@ -35,6 +49,11 @@ struct PrivacyAndDataView: View {
                     )
 
                     VStack(spacing: StudioTokens.Spacing.small) {
+                        PrivacyCommitment(
+                            symbol: "internaldrive",
+                            title: "Learning progress",
+                            detail: "Challenge attempts, article activity, interaction preferences, and your selected tab are stored locally with SwiftData. No account or cloud connection is required."
+                        )
                         PrivacyCommitment(
                             symbol: "doc.text.magnifyingglass",
                             title: "Sources",
@@ -58,8 +77,9 @@ struct PrivacyAndDataView: View {
                     }
 
                     Text(
-                        "This screen states the product boundary. It does not "
-                            + "claim that later import, sync, or export features are complete."
+                        isLearningSessionTemporary
+                            ? "Clearing the temporary session removes only its in-memory activity; it does not modify the unavailable persistent store. This screen does not claim that later import, sync, or export features are complete."
+                            : "Resetting learning progress removes only these local studio records. This screen does not claim that later import, sync, or export features are complete."
                     )
                     .font(StudioTokens.Typography.caption)
                     .foregroundStyle(StudioTokens.Color.secondaryText)

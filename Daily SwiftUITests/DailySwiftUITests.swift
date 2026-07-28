@@ -188,4 +188,407 @@ final class DailySwiftUITests: XCTestCase {
             "Retry should recover when storage becomes available."
         )
     }
+
+    @MainActor
+    func testNativeTabsSupportChallengeArticleAndProgressFlow() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--ui-testing",
+            "--app-shell-scenario=ready",
+            "--learning-studio-scenario=empty",
+        ]
+
+        app.launch()
+
+        let tabBar = app.tabBars.firstMatch
+        XCTAssertTrue(
+            tabBar.waitForExistence(timeout: 5),
+            "The functional studio should use a native tab bar."
+        )
+        XCTAssertTrue(tabBar.buttons["Today"].exists)
+        XCTAssertTrue(tabBar.buttons["Challenges"].exists)
+        XCTAssertTrue(tabBar.buttons["Library"].exists)
+        XCTAssertTrue(tabBar.buttons["Progress"].exists)
+
+        tabBar.buttons["Challenges"].tap()
+        XCTAssertTrue(
+            app.navigationBars["Challenges"].waitForExistence(timeout: 5)
+        )
+
+        app.buttons["challenges.open.swift.value-copy-output"].tap()
+        XCTAssertTrue(
+            app.descendants(matching: .any)["challenge.player"]
+                .waitForExistence(timeout: 5)
+        )
+        app.buttons["challenge.choice.zero-one"].tap()
+        app.buttons["challenge.submit"].tap()
+        assertAttemptSaved(
+            app.descendants(matching: .any)[
+                "challenge.feedback.correct"
+            ]
+        )
+
+        tabBar.buttons["Library"].tap()
+        XCTAssertTrue(
+            app.navigationBars["Library"].waitForExistence(timeout: 5)
+        )
+        app.buttons["library.open.swift.value-semantics"].tap()
+        XCTAssertTrue(
+            app.descendants(matching: .any)["article.reader"]
+                .waitForExistence(timeout: 5)
+        )
+        app.buttons["article.bookmark"].tap()
+        let markReadButton = app.buttons["article.mark-read"]
+        XCTAssertTrue(markReadButton.waitForExistence(timeout: 5))
+        expectation(
+            for: NSPredicate(format: "isEnabled == true"),
+            evaluatedWith: markReadButton
+        )
+        waitForExpectations(timeout: 5)
+        markReadButton.tap()
+        expectation(
+            for: NSPredicate(format: "label == 'Article read'"),
+            evaluatedWith: markReadButton
+        )
+        waitForExpectations(timeout: 5)
+
+        tabBar.buttons["Progress"].tap()
+        XCTAssertTrue(
+            app.navigationBars["Progress"].waitForExistence(timeout: 5)
+        )
+        let correctAnswers = app.descendants(matching: .any)[
+            "progress.correct-answers"
+        ]
+        let articlesRead = app.descendants(matching: .any)[
+            "progress.articles-read"
+        ]
+        XCTAssertTrue(correctAnswers.waitForExistence(timeout: 5))
+        XCTAssertTrue(articlesRead.waitForExistence(timeout: 5))
+        XCTAssertEqual(correctAnswers.value as? String, "1")
+        XCTAssertEqual(articlesRead.value as? String, "1")
+    }
+
+    @MainActor
+    func testLearningEvidenceAndSelectedTabRestoreAcrossRelaunch() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--ui-testing",
+            "--app-shell-scenario=ready",
+            "--learning-studio-scenario=live",
+            "--reset-ui-testing-learning-progress",
+        ]
+
+        app.launch()
+
+        let tabBar = app.tabBars.firstMatch
+        XCTAssertTrue(tabBar.waitForExistence(timeout: 5))
+        tabBar.buttons["Challenges"].tap()
+        app.buttons["challenges.open.swift.value-copy-output"].tap()
+        XCTAssertTrue(
+            app.descendants(matching: .any)["challenge.player"]
+                .waitForExistence(timeout: 5)
+        )
+        app.buttons["challenge.choice.zero-one"].tap()
+        app.buttons["challenge.submit"].tap()
+        assertAttemptSaved(
+            app.descendants(matching: .any)[
+                "challenge.feedback.correct"
+            ]
+        )
+
+        app.terminate()
+        app.launchArguments = [
+            "--ui-testing",
+            "--app-shell-scenario=ready",
+            "--learning-studio-scenario=live",
+        ]
+        app.launch()
+
+        XCTAssertTrue(
+            app.navigationBars["Challenges"].waitForExistence(timeout: 5),
+            "The selected native tab should restore without restoring a stale detail path."
+        )
+        app.tabBars.buttons["Progress"].tap()
+
+        let correctAnswers = app.descendants(matching: .any)[
+            "progress.correct-answers"
+        ]
+        XCTAssertTrue(correctAnswers.waitForExistence(timeout: 5))
+        XCTAssertEqual(
+            correctAnswers.value as? String,
+            "1",
+            "Saved challenge evidence should survive termination."
+        )
+    }
+
+    @MainActor
+    func testLearningStoreRestoreFailureCanRetry() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--ui-testing",
+            "--app-shell-scenario=ready",
+            "--learning-studio-scenario=restore-retry",
+        ]
+
+        app.launch()
+
+        XCTAssertTrue(
+            app.staticTexts["learning-studio.failure"]
+                .waitForExistence(timeout: 5)
+        )
+        app.buttons["learning-studio.retry"].tap()
+
+        XCTAssertTrue(
+            app.navigationBars["Today"].waitForExistence(timeout: 5),
+            "A deterministic retry should restore the functional studio."
+        )
+    }
+
+    @MainActor
+    func testChallengeSaveFailureCanRetryWithoutLosingFeedback() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--ui-testing",
+            "--app-shell-scenario=ready",
+            "--learning-studio-scenario=write-retry",
+        ]
+
+        app.launch()
+
+        let tabBar = app.tabBars.firstMatch
+        XCTAssertTrue(tabBar.waitForExistence(timeout: 5))
+        tabBar.buttons["Challenges"].tap()
+        app.buttons["challenges.open.swift.value-copy-output"].tap()
+        XCTAssertTrue(
+            app.descendants(matching: .any)["challenge.player"]
+                .waitForExistence(timeout: 5)
+        )
+        app.buttons["challenge.choice.zero-one"].tap()
+        app.buttons["challenge.submit"].tap()
+
+        XCTAssertTrue(
+            app.buttons["challenge.retry-save"]
+                .waitForExistence(timeout: 5),
+            "Correctness should remain visible when saving fails."
+        )
+        app.buttons["challenge.retry-save"].tap()
+
+        assertAttemptSaved(
+            app.descendants(matching: .any)[
+                "challenge.feedback.correct"
+            ]
+        )
+        XCTAssertFalse(
+            app.buttons["challenge.retry-save"].exists,
+            "A successful idempotent retry should clear the unsaved state."
+        )
+    }
+
+    @MainActor
+    func testLearningStoreFailureCanContinueTemporarily() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--ui-testing",
+            "--app-shell-scenario=ready",
+            "--learning-studio-scenario=restore-retry",
+        ]
+
+        app.launch()
+
+        XCTAssertTrue(
+            app.staticTexts["learning-studio.failure"]
+                .waitForExistence(timeout: 5)
+        )
+        app.buttons["learning-studio.continue-temporarily"].tap()
+
+        XCTAssertTrue(
+            app.descendants(matching: .any)[
+                "learning-studio.temporary"
+            ]
+            .waitForExistence(timeout: 5),
+            "Temporary mode must be explicit before the learner continues."
+        )
+        XCTAssertTrue(app.tabBars.firstMatch.exists)
+
+        app.tabBars.buttons["Challenges"].tap()
+        app.buttons["challenges.open.swift.value-copy-output"].tap()
+        app.buttons["challenge.choice.zero-one"].tap()
+        app.buttons["challenge.submit"].tap()
+        XCTAssertTrue(
+            app.descendants(matching: .any)[
+                "challenge.feedback.temporary-storage"
+            ]
+            .waitForExistence(timeout: 5)
+        )
+
+        app.tabBars.buttons["Progress"].tap()
+        XCTAssertTrue(
+            app.staticTexts["TEMPORARY SESSION EVIDENCE"]
+                .waitForExistence(timeout: 5)
+        )
+        XCTAssertFalse(
+            app.staticTexts["SAVED LEARNING EVIDENCE"].exists
+        )
+
+        app.buttons["progress.preferences"].tap()
+        XCTAssertTrue(
+            app.buttons["Clear temporary session"]
+                .waitForExistence(timeout: 5)
+        )
+        XCTAssertFalse(app.buttons["Reset learning progress"].exists)
+    }
+
+    @MainActor
+    func testLibrarySearchAndBookmarksEmptyStates() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--ui-testing",
+            "--app-shell-scenario=ready",
+            "--learning-studio-scenario=empty",
+        ]
+
+        app.launch()
+        app.tabBars.buttons["Library"].tap()
+        XCTAssertTrue(
+            app.navigationBars["Library"].waitForExistence(timeout: 5)
+        )
+
+        let bookmarkFilter = app.buttons["library.bookmarks-filter"]
+        XCTAssertTrue(bookmarkFilter.waitForExistence(timeout: 5))
+        bookmarkFilter.tap()
+        XCTAssertTrue(
+            app.staticTexts["No bookmarked articles"]
+                .waitForExistence(timeout: 5)
+        )
+
+        bookmarkFilter.tap()
+        let searchField = app.searchFields["Search articles"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 5))
+        searchField.tap()
+        searchField.typeText("topic-that-does-not-exist")
+
+        XCTAssertTrue(
+            app.staticTexts["No matching articles"]
+                .waitForExistence(timeout: 5)
+        )
+    }
+
+    @MainActor
+    func testArticleStateRestoresAcrossRelaunch() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--ui-testing",
+            "--app-shell-scenario=ready",
+            "--learning-studio-scenario=live",
+            "--reset-ui-testing-learning-progress",
+        ]
+
+        app.launch()
+        app.tabBars.buttons["Library"].tap()
+        app.buttons["library.open.swift.value-semantics"].tap()
+        XCTAssertTrue(
+            app.descendants(matching: .any)["article.reader"]
+                .waitForExistence(timeout: 5)
+        )
+
+        app.buttons["article.bookmark"].tap()
+        let markReadButton = app.buttons["article.mark-read"]
+        expectation(
+            for: NSPredicate(format: "isEnabled == true"),
+            evaluatedWith: markReadButton
+        )
+        waitForExpectations(timeout: 5)
+        markReadButton.tap()
+        expectation(
+            for: NSPredicate(format: "label == 'Article read'"),
+            evaluatedWith: markReadButton
+        )
+        waitForExpectations(timeout: 5)
+
+        app.terminate()
+        app.launchArguments = [
+            "--ui-testing",
+            "--app-shell-scenario=ready",
+            "--learning-studio-scenario=live",
+        ]
+        app.launch()
+
+        XCTAssertTrue(
+            app.navigationBars["Library"].waitForExistence(timeout: 5)
+        )
+        let row = app.buttons["library.open.swift.value-semantics"]
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        let value = row.value as? String
+        XCTAssertTrue(value?.contains("read") == true)
+        XCTAssertFalse(value?.contains("not read") == true)
+        XCTAssertTrue(value?.contains("bookmarked") == true)
+    }
+
+    @MainActor
+    func testIncorrectChallengeCanBeRemediatedAndRetried() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--ui-testing",
+            "--app-shell-scenario=ready",
+            "--learning-studio-scenario=empty",
+        ]
+
+        app.launch()
+        app.tabBars.buttons["Challenges"].tap()
+        app.buttons["challenges.open.swift.value-copy-output"].tap()
+        XCTAssertTrue(
+            app.descendants(matching: .any)["challenge.player"]
+                .waitForExistence(timeout: 5)
+        )
+
+        app.buttons["challenge.choice.one-one"].tap()
+        app.buttons["challenge.submit"].tap()
+        let incorrectFeedback = app.descendants(matching: .any)[
+            "challenge.feedback.incorrect"
+        ]
+        assertAttemptSaved(incorrectFeedback)
+        XCTAssertTrue(
+            app.buttons["challenge.try-again"]
+                .waitForExistence(timeout: 5)
+        )
+        app.buttons["challenge.try-again"].tap()
+        app.buttons["challenge.choice.zero-one"].tap()
+        app.buttons["challenge.submit"].tap()
+        assertAttemptSaved(
+            app.descendants(matching: .any)[
+                "challenge.feedback.correct"
+            ]
+        )
+
+        app.tabBars.buttons["Progress"].tap()
+        let attempts = app.descendants(matching: .any)[
+            "progress.attempts"
+        ]
+        let correct = app.descendants(matching: .any)[
+            "progress.correct-answers"
+        ]
+        XCTAssertTrue(attempts.waitForExistence(timeout: 5))
+        XCTAssertEqual(attempts.value as? String, "2")
+        XCTAssertEqual(correct.value as? String, "1")
+    }
+
+    @MainActor
+    private func assertAttemptSaved(_ feedback: XCUIElement) {
+        XCTAssertTrue(
+            feedback.waitForExistence(timeout: 5),
+            "Deterministic feedback should be visible."
+        )
+        let saved = XCTNSPredicateExpectation(
+            predicate: NSPredicate(
+                format: "value CONTAINS %@",
+                "Attempt saved."
+            ),
+            object: feedback
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [saved], timeout: 5),
+            .completed,
+            "The UI must not continue before the attempt is durable."
+        )
+    }
 }
