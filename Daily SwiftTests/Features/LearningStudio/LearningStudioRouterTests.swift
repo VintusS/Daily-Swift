@@ -8,16 +8,50 @@ struct LearningStudioRouterTests {
         let router = LearningStudioRouter()
 
         router.openArticle("article.one")
+        router.openSource(SourceLibraryFixtures.sourceID)
+        router.openCitation(SourceLibraryFixtures.chunks[0].citation)
         router.openChallenge("challenge.one")
         router.openPreferences()
 
         #expect(router.selectedTab == .progress)
-        #expect(router.libraryPath == [.article("article.one")])
+        #expect(
+            router.libraryPath == [
+                .article("article.one"),
+                .sourceDocument(SourceLibraryFixtures.sourceID),
+                .sourceCitation(
+                    SourceLibraryFixtures.chunks[0].citation
+                ),
+            ]
+        )
         #expect(
             router.challengesPath == [.challenge("challenge.one")]
         )
         #expect(router.progressPath == [.preferences])
         #expect(router.todayPath.isEmpty)
+    }
+
+    @Test("Returning after source deletion clears only the Library path")
+    func sourceDeletionReturnsToLibraryRoot() {
+        let router = LearningStudioRouter(
+            selectedTab: .progress,
+            challengesPath: [.challenge("challenge.one")],
+            libraryPath: [
+                .sourceDocument(SourceLibraryFixtures.sourceID),
+                .sourceCitation(
+                    SourceLibraryFixtures.chunks[0].citation
+                ),
+            ],
+            progressPath: [.preferences]
+        )
+
+        router.returnToLibraryRoot()
+
+        #expect(router.selectedTab == .library)
+        #expect(router.libraryPath.isEmpty)
+        #expect(
+            router.challengesPath == [.challenge("challenge.one")]
+        )
+        #expect(router.progressPath == [.preferences])
     }
 
     @Test("Replacing one tab path leaves the others unchanged")

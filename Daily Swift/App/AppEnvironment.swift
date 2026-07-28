@@ -21,6 +21,13 @@ struct AppLaunchConfiguration: Equatable, Sendable {
         case writeRetry = "write-retry"
     }
 
+    enum SourceScenario: String, Equatable, Sendable {
+        case live
+        case empty
+        case seeded
+        case restoreRetry = "restore-retry"
+    }
+
     static let uiTestingFlag = "--ui-testing"
     static let structuredGenerationSpikeFlag =
         "--open-structured-generation-spike"
@@ -31,6 +38,8 @@ struct AppLaunchConfiguration: Equatable, Sendable {
         "--learning-studio-scenario"
     static let resetUITestingLearningFlag =
         "--reset-ui-testing-learning-progress"
+    static let sourceScenarioArgument =
+        "--source-library-scenario"
     static let uiTestingSnapshotKey =
         "app-shell.ui-testing.snapshot"
 
@@ -40,6 +49,7 @@ struct AppLaunchConfiguration: Equatable, Sendable {
     let shouldResetUITestingLearning: Bool
     let shellScenario: ShellScenario
     let learningScenario: LearningScenario
+    let sourceScenario: SourceScenario
 
     init(processInfo: ProcessInfo = .processInfo) {
         self.init(arguments: processInfo.arguments)
@@ -58,6 +68,8 @@ struct AppLaunchConfiguration: Equatable, Sendable {
         )
         shellScenario = Self.parseShellScenario(from: arguments)
         learningScenario = Self.parseLearningScenario(from: arguments)
+            ?? (isUITestingEnabled ? .empty : .live)
+        sourceScenario = Self.parseSourceScenario(from: arguments)
             ?? (isUITestingEnabled ? .empty : .live)
     }
 
@@ -106,6 +118,29 @@ struct AppLaunchConfiguration: Equatable, Sendable {
 
         return nil
     }
+
+    private static func parseSourceScenario(
+        from arguments: [String]
+    ) -> SourceScenario? {
+        let valuePrefix = "\(sourceScenarioArgument)="
+        if let argument = arguments.first(where: {
+            $0.hasPrefix(valuePrefix)
+        }) {
+            let rawValue = String(argument.dropFirst(valuePrefix.count))
+            return SourceScenario(rawValue: rawValue)
+        }
+
+        if let argumentIndex = arguments.firstIndex(
+            of: sourceScenarioArgument
+        ) {
+            let valueIndex = arguments.index(after: argumentIndex)
+            if arguments.indices.contains(valueIndex) {
+                return SourceScenario(rawValue: arguments[valueIndex])
+            }
+        }
+
+        return nil
+    }
 }
 
 @MainActor
@@ -115,6 +150,7 @@ struct AppEnvironment {
     let learningProgressStore: any LearningProgressStoring
     let learningRouter: LearningStudioRouter
     let learningCatalog: LearningCatalog
+    let sourceLibraryService: any SourceLibraryServing
     let launchConfiguration: AppLaunchConfiguration
 
     init(
@@ -124,6 +160,8 @@ struct AppEnvironment {
             InMemoryLearningProgressStore(),
         learningRouter: LearningStudioRouter = LearningStudioRouter(),
         learningCatalog: LearningCatalog = SeedCurriculumProvider.catalog,
+        sourceLibraryService: any SourceLibraryServing =
+            InMemorySourceLibraryService(),
         launchConfiguration: AppLaunchConfiguration = AppLaunchConfiguration(
             arguments: []
         )
@@ -133,6 +171,7 @@ struct AppEnvironment {
         self.learningProgressStore = learningProgressStore
         self.learningRouter = learningRouter
         self.learningCatalog = learningCatalog
+        self.sourceLibraryService = sourceLibraryService
         self.launchConfiguration = launchConfiguration
     }
 
@@ -142,6 +181,9 @@ struct AppEnvironment {
     ) -> AppEnvironment {
         let configuration = AppLaunchConfiguration(processInfo: processInfo)
         let learningProgressStore = Self.learningProgressStore(
+            for: configuration
+        )
+        let sourceLibraryService = Self.sourceLibraryService(
             for: configuration
         )
 
@@ -161,6 +203,7 @@ struct AppEnvironment {
                             .uiTestingSnapshotKey
                     ),
                     learningProgressStore: learningProgressStore,
+                    sourceLibraryService: sourceLibraryService,
                     launchConfiguration: configuration
                 )
             }
@@ -170,6 +213,7 @@ struct AppEnvironment {
                     for: configuration.shellScenario
                 ),
                 learningProgressStore: learningProgressStore,
+                sourceLibraryService: sourceLibraryService,
                 launchConfiguration: configuration
             )
         }
@@ -180,6 +224,7 @@ struct AppEnvironment {
                 defaults: defaults
             ),
             learningProgressStore: learningProgressStore,
+            sourceLibraryService: sourceLibraryService,
             launchConfiguration: configuration
         )
     }
@@ -197,6 +242,10 @@ struct AppEnvironment {
             store: learningProgressStore,
             router: learningRouter
         )
+    }
+
+    func makeSourceLibraryViewModel() -> SourceLibraryViewModel {
+        SourceLibraryViewModel(service: sourceLibraryService)
     }
 
     private static func learningProgressStore(
@@ -235,6 +284,30 @@ struct AppEnvironment {
 #endif
 
         return LearningProgressStoreFactory.live()
+    }
+
+    private static func sourceLibraryService(
+        for configuration: AppLaunchConfiguration
+    ) -> any SourceLibraryServing {
+#if DEBUG
+        if configuration.isUITestingEnabled {
+            switch configuration.sourceScenario {
+            case .live, .empty:
+                return InMemorySourceLibraryService()
+            case .seeded:
+                return SourceLibraryFixtures.service()
+            case .restoreRetry:
+                return InMemorySourceLibraryService(
+                    restoreOutcomes: [
+                        .failure(.readFailed),
+                        .success(()),
+                    ]
+                )
+            }
+        }
+#endif
+
+        return SourceLibraryStoreFactory.live()
     }
 
 #if DEBUG

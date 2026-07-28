@@ -41,6 +41,8 @@ enum LearningStudioTab: String, CaseIterable, Codable, Hashable, Identifiable, S
 enum LearningStudioRoute: Hashable, Sendable {
     case article(String)
     case challenge(String)
+    case sourceDocument(UUID)
+    case sourceCitation(SourceCitation)
     case preferences
 }
 
@@ -97,6 +99,27 @@ final class LearningStudioRouter {
         if challengesPath.last != route {
             challengesPath.append(route)
         }
+    }
+
+    func openSource(_ sourceID: UUID) {
+        selectedTab = .library
+        let route = LearningStudioRoute.sourceDocument(sourceID)
+        if libraryPath.last != route {
+            libraryPath.append(route)
+        }
+    }
+
+    func openCitation(_ citation: SourceCitation) {
+        selectedTab = .library
+        let route = LearningStudioRoute.sourceCitation(citation)
+        if libraryPath.last != route {
+            libraryPath.append(route)
+        }
+    }
+
+    func returnToLibraryRoot() {
+        selectedTab = .library
+        libraryPath.removeAll()
     }
 
     func openPreferences() {

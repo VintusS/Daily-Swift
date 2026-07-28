@@ -4,15 +4,20 @@ import SwiftUI
 struct AppRootView: View {
     @State private var viewModel: AppRootViewModel
     @State private var learningStudioViewModel: LearningStudioViewModel
+    @State private var sourceLibraryViewModel: SourceLibraryViewModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(
         viewModel: AppRootViewModel,
-        learningStudioViewModel: LearningStudioViewModel
+        learningStudioViewModel: LearningStudioViewModel,
+        sourceLibraryViewModel: SourceLibraryViewModel
     ) {
         _viewModel = State(initialValue: viewModel)
         _learningStudioViewModel = State(
             initialValue: learningStudioViewModel
+        )
+        _sourceLibraryViewModel = State(
+            initialValue: sourceLibraryViewModel
         )
     }
 
@@ -50,6 +55,7 @@ struct AppRootView: View {
         case .ready:
             LearningStudioView(
                 viewModel: learningStudioViewModel,
+                sourceLibraryViewModel: sourceLibraryViewModel,
                 onPrivacy: {
                     viewModel.navigate(to: .privacyAndData)
                 }
@@ -177,6 +183,9 @@ struct AppRootView: View {
         learningStudioViewModel: LearningStudioViewModel(
             catalog: SeedCurriculumProvider.catalog,
             store: InMemoryLearningProgressStore()
+        ),
+        sourceLibraryViewModel: SourceLibraryViewModel(
+            service: InMemorySourceLibraryService()
         )
     )
 }
@@ -193,6 +202,9 @@ struct AppRootView: View {
         learningStudioViewModel: LearningStudioViewModel(
             catalog: SeedCurriculumProvider.catalog,
             store: InMemoryLearningProgressStore()
+        ),
+        sourceLibraryViewModel: SourceLibraryViewModel(
+            service: SourceLibraryFixtures.service()
         )
     )
     .preferredColorScheme(.dark)
@@ -208,6 +220,9 @@ struct AppRootView: View {
         learningStudioViewModel: LearningStudioViewModel(
             catalog: SeedCurriculumProvider.catalog,
             store: InMemoryLearningProgressStore()
+        ),
+        sourceLibraryViewModel: SourceLibraryViewModel(
+            service: InMemorySourceLibraryService()
         )
     )
     .environment(\.dynamicTypeSize, .accessibility3)

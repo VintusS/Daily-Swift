@@ -20,10 +20,10 @@ work packet. Accepted records take precedence over execution plans.
 | ADR-003 | Planned | CloudKit sync and conflict resolution |
 | ADR-004 | Planned | Competency graph and mastery model |
 | [ADR-005](ADR-005-foundation-models-provider.md) | Proposed | Foundation Models provider abstraction; Packet 000-A device decision pending |
-| ADR-006 | Planned | Retrieval and indexing approach |
+| [ADR-006](ADR-006-source-ingestion-and-retrieval.md) | Accepted | Private source storage, deterministic chunks, exact citations, and measured retrieval foundation |
 | ADR-007 | Planned | Generated-content trust and validation |
 | ADR-008 | Planned | Code-execution capability levels |
-| ADR-009 | Planned | Source licensing and private imports |
+| [ADR-009](ADR-009-private-source-rights.md) | Accepted | Lawful private import, rights metadata, local-only handling, and deletion policy |
 | ADR-010 | Planned | Gamification economy and anti-blocking rules |
 | ADR-011 | Planned | Prompt versioning and model-update testing |
 | ADR-012 | Planned | Open-source code versus content repositories |
