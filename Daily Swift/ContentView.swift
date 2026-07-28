@@ -9,22 +9,52 @@ import SwiftUI
 
 @MainActor
 struct ContentView: View {
+    private let rootViewModel: AppRootViewModel
+    private let learningStudioViewModel: LearningStudioViewModel
+    private let launchConfiguration: AppLaunchConfiguration
+
+    init(environment: AppEnvironment = .live()) {
+        self.init(
+            rootViewModel: environment.makeRootViewModel(),
+            learningStudioViewModel:
+                environment.makeLearningStudioViewModel(),
+            launchConfiguration: environment.launchConfiguration
+        )
+    }
+
+    init(
+        rootViewModel: AppRootViewModel,
+        learningStudioViewModel: LearningStudioViewModel,
+        launchConfiguration: AppLaunchConfiguration
+    ) {
+        self.rootViewModel = rootViewModel
+        self.learningStudioViewModel = learningStudioViewModel
+        self.launchConfiguration = launchConfiguration
+    }
+
     var body: some View {
 #if DEBUG
-        StructuredGenerationView()
-#else
-        VStack {
-            Image(systemName: "swift")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Daily Swift")
-                .accessibilityIdentifier("initial.greeting")
+        if launchConfiguration.isStructuredGenerationSpikeEnabled {
+            StructuredGenerationView()
+        } else {
+            AppRootView(
+                viewModel: rootViewModel,
+                learningStudioViewModel: learningStudioViewModel
+            )
         }
-        .padding()
+#else
+        AppRootView(
+            viewModel: rootViewModel,
+            learningStudioViewModel: learningStudioViewModel
+        )
 #endif
     }
 }
 
 #Preview {
-    ContentView()
+    ContentView(
+        environment: AppEnvironment(
+            bootstrapService: InMemoryAppBootstrapService()
+        )
+    )
 }

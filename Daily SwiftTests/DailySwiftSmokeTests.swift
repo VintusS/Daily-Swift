@@ -5,6 +5,10 @@ import Testing
 struct DailySwiftSmokeTests {
     @Test("The initial view can be constructed")
     func initialViewCanBeConstructed() {
-        _ = ContentView()
+        let environment = AppEnvironment(
+            bootstrapService: InMemoryAppBootstrapService()
+        )
+
+        _ = ContentView(environment: environment)
     }
 }

@@ -10,9 +10,25 @@ import SwiftUI
 @main
 @MainActor
 struct DailySwiftApp: App {
+    private let environment: AppEnvironment
+    private let rootViewModel: AppRootViewModel
+    private let learningStudioViewModel: LearningStudioViewModel
+
+    init() {
+        let environment = AppEnvironment.live()
+        self.environment = environment
+        rootViewModel = environment.makeRootViewModel()
+        learningStudioViewModel =
+            environment.makeLearningStudioViewModel()
+    }
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ContentView(
+                rootViewModel: rootViewModel,
+                learningStudioViewModel: learningStudioViewModel,
+                launchConfiguration: environment.launchConfiguration
+            )
         }
     }
 }
