@@ -11,6 +11,7 @@ struct SourceImportDetailsView: View {
     @State private var author = ""
     @State private var publisher = ""
     @State private var rightsStatus: SourceRightsStatus?
+    @State private var importTask: Task<Void, Never>?
 
     init(
         pendingImport: PendingSourceImport,
@@ -91,11 +92,18 @@ struct SourceImportDetailsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        onCancel()
-                        dismiss()
+                    Button(
+                        isImporting
+                            ? "Cancel Import"
+                            : "Cancel"
+                    ) {
+                        if isImporting {
+                            importTask?.cancel()
+                        } else {
+                            onCancel()
+                            dismiss()
+                        }
                     }
-                    .disabled(isImporting)
                     .accessibilityIdentifier("source-import.cancel")
                 }
 
@@ -115,6 +123,9 @@ struct SourceImportDetailsView: View {
                 }
             }
             .interactiveDismissDisabled(isImporting)
+            .onDisappear {
+                importTask?.cancel()
+            }
             .accessibilityIdentifier("source-import.details")
         }
     }
@@ -129,7 +140,7 @@ struct SourceImportDetailsView: View {
         guard let rightsStatus else {
             return
         }
-        Task {
+        importTask = Task {
             await onImport(
                 SourceImportMetadata(
                     title: title,
@@ -139,6 +150,7 @@ struct SourceImportDetailsView: View {
                 )
             )
             dismiss()
+            importTask = nil
         }
     }
 }

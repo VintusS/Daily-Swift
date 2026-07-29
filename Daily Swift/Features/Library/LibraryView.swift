@@ -116,7 +116,7 @@ struct LibraryView: View {
 
                                 Text(
                                     searchText.isEmpty
-                                        ? "Import a lawful TXT or Markdown file to keep it private and cite it offline."
+                                        ? "Import a lawful PDF, TXT, or Markdown file to keep it private and cite it offline."
                                         : "Try another title, filename, author, or publisher."
                                 )
                                 .font(StudioTokens.Typography.supporting)
@@ -291,7 +291,7 @@ struct LibraryView: View {
     }
 
     private static var allowedContentTypes: [UTType] {
-        ["txt", "md", "markdown"].compactMap {
+        [UTType.pdf] + ["txt", "md", "markdown"].compactMap {
             UTType(filenameExtension: $0)
         }
     }

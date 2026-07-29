@@ -89,6 +89,243 @@ struct SourceLibraryServiceTests {
         #expect(try await reloaded.resolve(citation) == resolved)
     }
 
+    @Test("PDF import persists page provenance and the offline original")
+    func pdfImportRoundTripAndCitation() async throws {
+        let extractor = StubPDFTextExtractor(
+            result: .success(
+                PDFTextExtraction(
+                    pages: [
+                        ExtractedPDFPage(
+                            number: 1,
+                            text: "First page evidence."
+                        ),
+                        ExtractedPDFPage(
+                            number: 2,
+                            text: "Second page evidence."
+                        ),
+                    ]
+                )
+            )
+        )
+        let fixture = try makeFixture(pdfTextExtractor: extractor)
+        defer {
+            try? FileManager.default.removeItem(at: fixture.temporaryRoot)
+        }
+        let sourceURL = fixture.temporaryRoot
+            .appendingPathComponent("lesson.pdf")
+        try Data("%PDF synthetic fixture".utf8).write(to: sourceURL)
+
+        let imported = try await fixture.service.importSource(
+            request(for: sourceURL)
+        )
+        let restored = try await fixture.service.restore()
+        let chunks = restored.chunks(for: imported.id)
+
+        #expect(imported.format == .pdf)
+        #expect(chunks.count == 1)
+        #expect(chunks[0].location.pageLabel == "Pages 1–2")
+
+        let storedDirectory = fixture.sourceRoot
+            .appendingPathComponent(
+                imported.id.uuidString.lowercased(),
+                isDirectory: true
+            )
+        #expect(
+            FileManager.default.fileExists(
+                atPath: storedDirectory
+                    .appendingPathComponent("original.pdf")
+                    .path
+            )
+        )
+        #expect(
+            FileManager.default.fileExists(
+                atPath: storedDirectory
+                    .appendingPathComponent("page-map.json")
+                    .path
+            )
+        )
+
+        let citation = chunks[0].citation
+        try FileManager.default.removeItem(at: sourceURL)
+        let resolved = try await fixture.service.resolve(citation)
+
+        #expect(resolved.document == imported)
+        #expect(resolved.citation.location.startPage == 1)
+        #expect(resolved.citation.location.endPage == 2)
+        #expect(
+            resolved.excerpt
+                == "First page evidence.\n\nSecond page evidence."
+        )
+        #expect(
+            resolved.originalFileURL
+                == storedDirectory.appendingPathComponent("original.pdf")
+        )
+        let changedPageCitation = SourceCitation(
+            sourceID: citation.sourceID,
+            chunkID: citation.chunkID,
+            headingPath: citation.headingPath,
+            location: SourceLocation(
+                startLine: citation.location.startLine,
+                endLine: citation.location.endLine,
+                startCharacter: citation.location.startCharacter,
+                endCharacter: citation.location.endCharacter,
+                startPage: 2,
+                endPage: 2
+            ),
+            contentHash: citation.contentHash
+        )
+        await #expect(throws: SourceLibraryFailure.citationInvalid) {
+            try await fixture.service.resolve(changedPageCitation)
+        }
+
+        let pageMapURL = storedDirectory.appendingPathComponent(
+            "page-map.json"
+        )
+        let alteredPageMap = """
+        {
+          "extractionVersion": 1,
+          "integrityHash": "invalid",
+          "pages": [
+            {
+              "pageNumber": 9,
+              "startCharacter": 0,
+              "endCharacter": 20
+            }
+          ]
+        }
+        """
+        try Data(alteredPageMap.utf8).write(
+            to: pageMapURL,
+            options: .atomic
+        )
+        let reloaded = SourceLibraryService(
+            metadataStore: SwiftDataSourceLibraryMetadataStore(
+                modelContainer: fixture.container
+            ),
+            rootURL: fixture.sourceRoot,
+            pdfTextExtractor: extractor
+        )
+        #expect(try await reloaded.restore() == restored)
+        #expect(
+            FileManager.default.fileExists(
+                atPath: storedDirectory
+                    .appendingPathComponent("page-map.json")
+                    .path
+            )
+        )
+        #expect(try await reloaded.resolve(citation) == resolved)
+    }
+
+    @Test("Equivalent extracted text is a duplicate across source formats")
+    func crossFormatDuplicateDetection() async throws {
+        let extractor = StubPDFTextExtractor(
+            result: .success(
+                PDFTextExtraction(
+                    pages: [
+                        ExtractedPDFPage(
+                            number: 1,
+                            text: "Shared normalized evidence."
+                        ),
+                    ]
+                )
+            )
+        )
+        let fixture = try makeFixture(pdfTextExtractor: extractor)
+        defer {
+            try? FileManager.default.removeItem(at: fixture.temporaryRoot)
+        }
+        let textURL = fixture.temporaryRoot
+            .appendingPathComponent("shared.txt")
+        let pdfURL = fixture.temporaryRoot
+            .appendingPathComponent("shared.pdf")
+        try Data("Shared normalized evidence.".utf8).write(to: textURL)
+        try Data("%PDF synthetic fixture".utf8).write(to: pdfURL)
+
+        _ = try await fixture.service.importSource(
+            request(for: textURL)
+        )
+
+        await #expect(
+            throws: SourceLibraryFailure.duplicate(
+                existingSourceID: sourceID
+            )
+        ) {
+            try await fixture.service.importSource(
+                request(for: pdfURL)
+            )
+        }
+        #expect(
+            try await fixture.service.restore().documents.count == 1
+        )
+    }
+
+    @Test("Cancelling PDF extraction leaves no visible or staged source")
+    func pdfExtractionCancellation() async throws {
+        let fixture = try makeFixture(
+            pdfTextExtractor: CancellablePDFTextExtractor()
+        )
+        defer {
+            try? FileManager.default.removeItem(at: fixture.temporaryRoot)
+        }
+        let sourceURL = fixture.temporaryRoot
+            .appendingPathComponent("cancel.pdf")
+        try Data("%PDF synthetic fixture".utf8).write(to: sourceURL)
+
+        let task = Task {
+            try await fixture.service.importSource(
+                request(for: sourceURL)
+            )
+        }
+        await Task.yield()
+        task.cancel()
+
+        await #expect(throws: SourceLibraryFailure.importCancelled) {
+            try await task.value
+        }
+        #expect(try await fixture.service.restore() == .empty)
+        let stagedEntries = (
+            try? FileManager.default.contentsOfDirectory(
+                at: fixture.sourceRoot,
+                includingPropertiesForKeys: nil
+            )
+        ) ?? []
+        #expect(
+            !stagedEntries.contains {
+                $0.lastPathComponent.hasPrefix(".importing-")
+            }
+        )
+    }
+
+    @Test("PDF extraction failures leave the source library unchanged")
+    func pdfExtractionFailuresAreAtomic() async throws {
+        for failure in [
+            SourceLibraryFailure.requiresOCR,
+            .encryptedDocument,
+            .pdfExtractionFailed,
+        ] {
+            let fixture = try makeFixture(
+                pdfTextExtractor: StubPDFTextExtractor(
+                    result: .failure(failure)
+                )
+            )
+            defer {
+                try? FileManager.default.removeItem(
+                    at: fixture.temporaryRoot
+                )
+            }
+            let sourceURL = fixture.temporaryRoot
+                .appendingPathComponent("unavailable.pdf")
+            try Data("%PDF synthetic fixture".utf8).write(to: sourceURL)
+
+            await #expect(throws: failure) {
+                try await fixture.service.importSource(
+                    request(for: sourceURL)
+                )
+            }
+            #expect(try await fixture.service.restore() == .empty)
+        }
+    }
+
     @Test("Restore removes interrupted import and deletion staging data")
     func interruptedFileOperationsAreCleaned() async throws {
         let fixture = try makeFixture()
@@ -289,7 +526,9 @@ struct SourceLibraryServiceTests {
         )
     }
 
-    private func makeFixture() throws -> (
+    private func makeFixture(
+        pdfTextExtractor: any PDFTextExtracting = PDFKitTextExtractor()
+    ) throws -> (
         service: SourceLibraryService,
         container: ModelContainer,
         temporaryRoot: URL,
@@ -318,8 +557,30 @@ struct SourceLibraryServiceTests {
             ),
             rootURL: sourceRoot,
             now: { fixedImportedAt },
-            makeSourceID: { fixedSourceID }
+            makeSourceID: { fixedSourceID },
+            pdfTextExtractor: pdfTextExtractor
         )
         return (service, container, temporaryRoot, sourceRoot)
+    }
+}
+
+private struct StubPDFTextExtractor: PDFTextExtracting {
+    let result: Result<PDFTextExtraction, SourceLibraryFailure>
+
+    func extract(
+        from url: URL
+    ) async throws(SourceLibraryFailure) -> PDFTextExtraction {
+        try result.get()
+    }
+}
+
+private struct CancellablePDFTextExtractor: PDFTextExtracting {
+    func extract(
+        from url: URL
+    ) async throws(SourceLibraryFailure) -> PDFTextExtraction {
+        while !Task.isCancelled {
+            await Task.yield()
+        }
+        throw .importCancelled
     }
 }

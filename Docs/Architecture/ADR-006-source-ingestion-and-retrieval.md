@@ -21,6 +21,10 @@ Packet 000-B has not measured PDF extraction, OCR, or retrieval ranking. ADR-005
 also remains Proposed pending physical-iPhone evidence. The source foundation
 must therefore be useful without either decision.
 
+Packet 005 subsequently measured text-PDF extraction on iOS 26.5 and extends
+this decision with a PDFKit adapter, page provenance, and explicit scanned-page
+detection. It does not accept OCR or a retrieval implementation.
+
 ## Decision
 
 ### Domain and service boundary
@@ -93,6 +97,45 @@ and benchmark it against SQLite FTS5 before selecting a production keyword
 index. Semantic reranking and `NLEmbedding` remain unselected until fixtures
 show material benefit.
 
+### Text PDF extraction and page provenance
+
+Use `PDFKit` behind the app-owned `PDFTextExtracting` protocol. PDFKit types do
+not enter domain models, feature view models, navigation state, or persistence
+records.
+
+For an accepted text PDF:
+
+1. copy the original PDF while security-scoped access is active;
+2. extract selectable text in one-based page order;
+3. normalize each page with the accepted normalization version;
+4. join non-empty pages with a deterministic two-line-feed separator;
+5. record each non-empty page's half-open `Character` range in a versioned
+   `page-map.json` sidecar;
+6. attach the intersecting one-based page range to each domain chunk and
+   citation;
+7. validate source, chunk, normalized range, content hash, and page range before
+   presenting the citation;
+8. open the locally stored original PDF at the first cited page on request.
+
+Page maps are private, derived data beside the stored original and normalized
+text. The existing source metadata schema remains version 1 because no stored
+model changes are required. Each sidecar includes a deterministic checksum of
+its version and ordered page spans. Restore validates the checksum, increasing
+page numbers, non-overlapping in-bounds ranges, and normalized-text bounds
+before hydrating page locations. A missing, unreadable, or invalid sidecar is
+rebuilt from the stored original only when the re-extracted normalized content
+hash matches the document fingerprint; otherwise restoration fails closed.
+
+Treat a PDF as requiring OCR when it has no selectable-text pages or when fewer
+than 20 percent of its pages contain non-whitespace selectable text. Encrypted,
+malformed, extraction-failed, oversized, and cancelled imports do not create
+visible metadata. OCR remains a separate opt-in decision.
+
+The normalized-content SHA-256 remains the duplicate identity across all source
+formats. A PDF whose extracted normalized text matches an existing text,
+Markdown, or PDF source resolves as a duplicate of that existing source rather
+than creating a second document with different provenance.
+
 ### Deletion
 
 Deleting a source explicitly removes its document record, all chunk records,
@@ -140,7 +183,11 @@ benefit. Repository-native files remain in the app target.
 
 - The app owns a second SwiftData schema and Application Support lifecycle.
 - Packet 004 deliberately rejects non-UTF-8 and files above 5 MiB.
+- Packet 005 accepts text PDFs within the same 5 MiB limit and rejects
+  scanned/image-dominant PDFs until an OCR decision is made.
 - Character offsets refer to normalized text, not byte offsets in the original.
+- PDF line and character offsets refer to normalized extracted text; one-based
+  page ranges preserve navigation to the locally stored original.
 - Keyword and semantic ranking remain later decisions.
 
 ## Verification
@@ -152,6 +199,11 @@ benefit. Repository-native files remain in the app target.
   directory.
 - UI-test the source library and exact-citation reader with synthetic fixtures
   where system document-picker automation is not stable.
+- Unit-test PDFKit extraction with synthetic project-owned text and image-only
+  PDFs.
+- Integration-test page-map persistence, rebuild, cancellation, exact-page
+  citation resolution, and deletion without retaining the provider URL.
+- UI-test opening a page-aware citation and its locally stored original PDF.
 - Run signing-independent Debug and Release builds plus project hygiene.
 
 ## Supersession

@@ -152,7 +152,7 @@ private struct SourcePassageRow: View {
                     .lineLimit(3)
 
                 Text(
-                    "\(chunk.location.lineLabel), \(chunk.location.characterLabel)"
+                    locationLabel
                 )
                 .font(StudioTokens.Typography.codeCaption)
                 .foregroundStyle(StudioTokens.Color.secondaryText)
@@ -171,8 +171,18 @@ private struct SourcePassageRow: View {
             chunk.citation.headingLabel ?? "Source passage"
         )
         .accessibilityValue(
-            "\(chunk.preview). \(chunk.location.lineLabel), \(chunk.location.characterLabel)"
+            "\(chunk.preview). \(locationLabel)"
         )
         .accessibilityHint("Opens the exact stored passage.")
+    }
+
+    private var locationLabel: String {
+        [
+            chunk.location.pageLabel,
+            chunk.location.lineLabel,
+            chunk.location.characterLabel,
+        ]
+        .compactMap(\.self)
+        .joined(separator: ", ")
     }
 }

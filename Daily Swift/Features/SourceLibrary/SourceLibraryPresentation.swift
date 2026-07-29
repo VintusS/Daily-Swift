@@ -9,7 +9,11 @@ struct ImportedSourceRow: View {
             alignment: .top,
             spacing: StudioTokens.Spacing.small
         ) {
-            Image(systemName: "doc.text")
+            Image(
+                systemName: document.format == .pdf
+                    ? "doc.richtext"
+                    : "doc.text"
+            )
                 .font(.title3)
                 .foregroundStyle(StudioTokens.Color.action)
                 .frame(minWidth: 30, minHeight: 30)

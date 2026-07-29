@@ -148,7 +148,9 @@ final class SourceLibraryViewModel {
             state = .ready
             feedback = .imported(sourceID: document.id)
         } catch let failure as SourceLibraryFailure {
-            if case let .duplicate(existingSourceID) = failure {
+            if failure == .importCancelled {
+                feedback = .cancelled
+            } else if case let .duplicate(existingSourceID) = failure {
                 feedback = .duplicate(
                     existingSourceID: existingSourceID
                 )

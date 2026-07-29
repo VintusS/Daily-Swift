@@ -3,6 +3,7 @@ import Foundation
 enum SourceDocumentFormat: String, Codable, CaseIterable, Hashable, Sendable {
     case plainText
     case markdown
+    case pdf
 
     var label: String {
         switch self {
@@ -10,6 +11,8 @@ enum SourceDocumentFormat: String, Codable, CaseIterable, Hashable, Sendable {
             "Plain text"
         case .markdown:
             "Markdown"
+        case .pdf:
+            "PDF"
         }
     }
 
@@ -19,6 +22,8 @@ enum SourceDocumentFormat: String, Codable, CaseIterable, Hashable, Sendable {
             "txt"
         case .markdown:
             "md"
+        case .pdf:
+            "pdf"
         }
     }
 
@@ -29,6 +34,8 @@ enum SourceDocumentFormat: String, Codable, CaseIterable, Hashable, Sendable {
             .plainText
         case "md", "markdown":
             .markdown
+        case "pdf":
+            .pdf
         default:
             throw .unsupportedFileType
         }
@@ -116,6 +123,24 @@ struct SourceLocation: Codable, Equatable, Hashable, Sendable {
     let endLine: Int
     let startCharacter: Int
     let endCharacter: Int
+    let startPage: Int?
+    let endPage: Int?
+
+    init(
+        startLine: Int,
+        endLine: Int,
+        startCharacter: Int,
+        endCharacter: Int,
+        startPage: Int? = nil,
+        endPage: Int? = nil
+    ) {
+        self.startLine = startLine
+        self.endLine = endLine
+        self.startCharacter = startCharacter
+        self.endCharacter = endCharacter
+        self.startPage = startPage
+        self.endPage = endPage
+    }
 
     var lineLabel: String {
         startLine == endLine
@@ -128,6 +153,16 @@ struct SourceLocation: Codable, Equatable, Hashable, Sendable {
         return startCharacter == inclusiveEnd
             ? "Character \(startCharacter)"
             : "Characters \(startCharacter)–\(inclusiveEnd)"
+    }
+
+    var pageLabel: String? {
+        guard let startPage,
+              let endPage else {
+            return nil
+        }
+        return startPage == endPage
+            ? "Page \(startPage)"
+            : "Pages \(startPage)–\(endPage)"
     }
 }
 
@@ -219,6 +254,7 @@ struct ResolvedSourceCitation: Equatable, Sendable {
     let document: SourceDocument
     let citation: SourceCitation
     let excerpt: String
+    let originalFileURL: URL?
 }
 
 struct SourceLibrarySnapshot: Equatable, Sendable {
@@ -247,6 +283,10 @@ enum SourceLibraryFailure: Error, Equatable, Sendable {
     case fileTooLarge
     case emptyDocument
     case invalidEncoding
+    case requiresOCR
+    case encryptedDocument
+    case pdfExtractionFailed
+    case importCancelled
     case unreadableFile
     case duplicate(existingSourceID: UUID)
     case initializationFailed
@@ -268,6 +308,14 @@ enum SourceLibraryFailure: Error, Equatable, Sendable {
             "Source has no readable text"
         case .invalidEncoding:
             "Text encoding is unsupported"
+        case .requiresOCR:
+            "PDF needs text recognition"
+        case .encryptedDocument:
+            "PDF is locked"
+        case .pdfExtractionFailed:
+            "PDF text could not be extracted"
+        case .importCancelled:
+            "Import cancelled"
         case .unreadableFile:
             "Source could not be read"
         case .duplicate:
@@ -292,13 +340,21 @@ enum SourceLibraryFailure: Error, Equatable, Sendable {
         case .missingTitle:
             "Add a title before importing this source."
         case .unsupportedFileType:
-            "Choose a TXT, MD, or Markdown file."
+            "Choose a PDF, TXT, MD, or Markdown file."
         case .fileTooLarge:
             "This first source importer accepts files up to 5 MiB."
         case .emptyDocument:
             "The selected file does not contain importable text."
         case .invalidEncoding:
             "Save the source as UTF-8 text and try again."
+        case .requiresOCR:
+            "This PDF contains too little selectable text. Text recognition is not enabled in this phase."
+        case .encryptedDocument:
+            "Remove the PDF password outside Daily Swift, then choose the unlocked copy."
+        case .pdfExtractionFailed:
+            "Daily Swift could not establish stable page text for this PDF."
+        case .importCancelled:
+            "Nothing was added or changed."
         case .unreadableFile:
             "Daily Swift could not access the selected file. Choose it again."
         case .duplicate:
