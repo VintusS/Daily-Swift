@@ -2,6 +2,8 @@
 
 Use the repository-local `develop-daily-swift` skill for every planning, coding,
 review, test, CI, Git, pull-request, and architecture task in this repository.
+Use the repository-local `github-only-tests` skill for every coding, review,
+validation, Git, pull-request, and delivery task.
 
 ## Sources of truth
 
@@ -27,6 +29,17 @@ review, test, CI, Git, pull-request, and architecture task in this repository.
 
 Run `.agents/skills/develop-daily-swift/scripts/validate-project-hygiene.sh`
 before handing off a change.
+
+## GitHub-only test execution
+
+- Add and maintain tests locally, but do not execute automated test suites in
+  this workspace.
+- Do not run local unit, integration, UI, benchmark, performance, or simulator
+  tests.
+- Leave test execution to the hosted `Tests` check in `iOS CI`.
+- Local project-hygiene, diff, static-review, and build-only commands remain
+  allowed.
+- Report tests as pending until GitHub CI provides the result.
 
 ## Product and engineering guardrails
 

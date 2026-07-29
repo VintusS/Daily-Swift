@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitHub-only tests"
+  short_description: "Keep Daily Swift test execution in GitHub CI"
+  default_prompt: "Use $github-only-tests to prepare this Daily Swift change without running tests locally."
