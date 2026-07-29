@@ -68,9 +68,11 @@ Recommended `main` ruleset:
 
 ## Verification
 
-Always run the hygiene script and a signing-independent Xcode build. Run the
-Swift Testing suite and stable UI smoke tests on every pull request. Run
-generated-content benchmarks when a prompt, model, source schema, or validation
-rule changes.
+Always run the hygiene script and a signing-independent Xcode build. Do not run
+automated test suites, UI tests, or benchmarks locally. Add and review the
+required test coverage, then rely on the hosted `Tests` check for execution.
+Run generated-content benchmarks through GitHub CI when a prompt, model, source
+schema, or validation rule changes.
 
-Do not report a build as tested when no test target executed.
+Before hosted results exist, report tests as not run locally and pending GitHub
+CI. Do not report a build as tested when no hosted test target executed.

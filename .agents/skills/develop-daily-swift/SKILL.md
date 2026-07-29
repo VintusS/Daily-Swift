@@ -98,5 +98,7 @@ Before handoff, run:
 .agents/skills/develop-daily-swift/scripts/validate-project-hygiene.sh
 ```
 
-Then run the most specific available build and test commands. Report the exact
-commands, results, remaining risks, and any unverified device-only behavior.
+Then run the most specific available build-only command. Apply the
+`github-only-tests` skill: add and inspect tests locally, but leave all automated
+test execution to GitHub CI. Report the exact local checks, hosted results when
+available, remaining risks, and any unverified device-only behavior.
