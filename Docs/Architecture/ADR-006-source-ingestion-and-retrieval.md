@@ -86,10 +86,33 @@ character location offline. It fails closed on missing or changed data.
 
 ### Import limits and derived data
 
-Packet 004 accepts `.txt`, `.md`, and `.markdown` files up to 5 MiB. Empty,
-unsupported, unreadable, invalid UTF-8, and larger files fail with stable,
-privacy-safe categories. Streaming very-large-document ingestion is a later
-packet.
+The source importer accepts `.txt`, `.md`, `.markdown`, and text-based `.pdf`
+files up to 50 MiB. Empty, unsupported, unreadable, invalid UTF-8, and larger
+files fail with stable, privacy-safe categories. The limit is a binary input
+cap, not a promise that arbitrary large documents will have low extraction,
+normalization, or indexing cost. Streaming very-large-document ingestion
+remains a later packet.
+
+The 50 MiB boundary is checked from file metadata before extraction and checked
+again from the readable byte count. A file exactly at the boundary is accepted;
+a file one byte larger fails before visible metadata is created. The importer
+continues to run outside the main actor, supports cancellation before metadata
+commit, and stages local files before atomically publishing the source.
+
+Simulator evidence recorded on 2026-07-29 with Xcode 26.5, an iPhone 17 arm64
+simulator, and iOS 26.5:
+
+| Fixture | Input bytes | Pages | Extracted characters | Extraction | Resident delta |
+|---|---:|---:|---:|---:|---:|
+| Small | 8,866 | 2 | 118 | 0.0054 s | +786,432 B |
+| Medium | 1,048,576 | 20 | 1,191 | 0.0110 s | +81,920 B |
+| Near 50 MiB limit | 52,427,776 | 80 | 4,791 | 0.4241 s | +393,216 B |
+
+The focused source-service and PDF-extraction run passed 18 tests with no
+failures or skips. It covered exact-boundary acceptance, one-byte-over rejection,
+and extraction of the near-boundary synthetic PDF. Resident deltas are process
+snapshots around extraction, not sampled peak memory, and do not establish
+physical-device thermal behavior.
 
 Chunk locations are rebuildable from the normalized file and normalization
 version. A later retrieval packet will keep a deterministic direct-scan oracle
@@ -182,9 +205,12 @@ benefit. Repository-native files remain in the app target.
 ### Negative
 
 - The app owns a second SwiftData schema and Application Support lifecycle.
-- Packet 004 deliberately rejects non-UTF-8 and files above 5 MiB.
-- Packet 005 accepts text PDFs within the same 5 MiB limit and rejects
-  scanned/image-dominant PDFs until an OCR decision is made.
+- The importer deliberately rejects non-UTF-8 text and files above 50 MiB.
+- Text PDFs up to 50 MiB are accepted; scanned/image-dominant PDFs remain
+  rejected until an OCR decision is made.
+- The higher input cap increases temporary disk use and potential extraction,
+  normalization, and chunking memory. Simulator measurements do not replace
+  physical-device peak-memory and thermal validation.
 - Character offsets refer to normalized text, not byte offsets in the original.
 - PDF line and character offsets refer to normalized extracted text; one-based
   page ranges preserve navigation to the locally stored original.
@@ -204,6 +230,10 @@ benefit. Repository-native files remain in the app target.
 - Integration-test page-map persistence, rebuild, cancellation, exact-page
   citation resolution, and deletion without retaining the provider URL.
 - UI-test opening a page-aware citation and its locally stored original PDF.
+- Integration-test acceptance at exactly 50 MiB and rejection one byte above
+  the limit without publishing metadata.
+- Measure PDF extraction at the 50 MiB boundary and record that simulator
+  resident-memory deltas are not physical-device peak-memory evidence.
 - Run signing-independent Debug and Release builds plus project hygiene.
 
 ## Supersession

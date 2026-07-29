@@ -467,6 +467,51 @@ struct SourceLibraryServiceTests {
         #expect(try await fixture.service.restore() == .empty)
     }
 
+    @Test("A PDF at the 50 MiB boundary imports successfully")
+    func maximumSizePDFImports() async throws {
+        let extractor = StubPDFTextExtractor(
+            result: .success(
+                PDFTextExtraction(
+                    pages: [
+                        ExtractedPDFPage(
+                            number: 1,
+                            text: "Boundary-sized PDF evidence."
+                        ),
+                    ]
+                )
+            )
+        )
+        let fixture = try makeFixture(pdfTextExtractor: extractor)
+        defer {
+            try? FileManager.default.removeItem(at: fixture.temporaryRoot)
+        }
+        let sourceURL = fixture.temporaryRoot
+            .appendingPathComponent("maximum.pdf")
+        #expect(
+            FileManager.default.createFile(
+                atPath: sourceURL.path,
+                contents: Data("%PDF".utf8)
+            )
+        )
+        let handle = try FileHandle(forWritingTo: sourceURL)
+        try handle.truncate(
+            atOffset: UInt64(
+                SourceLibraryService.maximumFileByteCount
+            )
+        )
+        try handle.close()
+
+        let imported = try await fixture.service.importSource(
+            request(for: sourceURL)
+        )
+
+        #expect(
+            imported.byteCount
+                == SourceLibraryService.maximumFileByteCount
+        )
+        #expect(try await fixture.service.restore().documents == [imported])
+    }
+
     @Test("Changed citation metadata and changed stored text fail closed")
     func invalidCitationFailsClosed() async throws {
         let fixture = try makeFixture()
