@@ -342,7 +342,7 @@ enum SourceLibraryFailure: Error, Equatable, Sendable {
         case .unsupportedFileType:
             "Choose a PDF, TXT, MD, or Markdown file."
         case .fileTooLarge:
-            "This first source importer accepts files up to 5 MiB."
+            "This source importer accepts files up to 50 MiB."
         case .emptyDocument:
             "The selected file does not contain importable text."
         case .invalidEncoding:

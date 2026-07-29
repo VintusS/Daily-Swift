@@ -10,7 +10,7 @@ protocol SourceLibraryServing: Sendable {
 }
 
 actor SourceLibraryService: SourceLibraryServing {
-    static let maximumFileByteCount = 5 * 1_024 * 1_024
+    static let maximumFileByteCount = 50 * 1_024 * 1_024
 
     private let metadataStore: any SourceLibraryMetadataStoring
     private let rootURL: URL
