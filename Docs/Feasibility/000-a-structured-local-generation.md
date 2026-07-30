@@ -228,10 +228,11 @@ prompts, sources, generated artifacts, or learner data.
 
 LLDB inspection of the running app recorded the OS build, locale/region,
 power/battery, and starting thermal category below. Xcode 26.5 could not import
-the iOS 27 beta Foundation Models module in the debugger, and a later console
-launch was blocked after iPhone Mirroring locked the phone. Model availability
-therefore remains unmeasured. Launch readiness does not prove generation
-quality, accessibility, latency, memory, or sustained thermal behavior.
+the iOS 27 beta Foundation Models module in the debugger. The explicit
+non-activating console report then mapped `SystemLanguageModel.default` and the
+current locale to application value `.available`. Launch and availability
+readiness do not prove generation quality, accessibility, latency, memory, or
+sustained thermal behavior.
 
 ### Physical-iPhone evidence
 
@@ -263,8 +264,8 @@ run.
 | Physical iPhone model | iPhone Air (`iPhone18,4`), identified by CoreDevice; benchmark not run |
 | Device OS version and build | iOS 27.0 beta (`24A5390f`); benchmark not run |
 | Locale and region | `en_US@rg=mdzzzz`; region `MD` (Moldova) |
-| Apple Intelligence state | Not measured |
-| Power state | Charging, 55% battery |
+| Apple Intelligence state | Ready for the current configuration: `SystemLanguageModel.default` and locale map to `.available` |
+| Power state | On battery, 55% |
 | Starting thermal state | Nominal before warm-up |
 
 ## Measurement procedure
@@ -358,7 +359,7 @@ diagnostics.
 | Subsequent request after cancellation | Not measured | Pending |
 | Memory termination | Not measured | Pending |
 | Worst thermal state | Not measured | Pending |
-| Target-device availability | Not measured | Pending |
+| Target-device availability | Available | Meets the availability go condition only |
 | Proposed outcome | Not selected | Physical-iPhone evidence required |
 
 ## Deterministic fallback
@@ -428,7 +429,8 @@ The isolated debug implementation uses the v2 deterministic identity boundary,
 and the measurement harness now represents the frozen schedule and request-size
 method. The declared iPhone accepts and launches the development-signed app.
 Hardware, OS, locale/region, power/battery, and starting thermal evidence is
-recorded, while model availability and the complete benchmark remain
-unmeasured. No product or architecture decision has been selected. The provider
-proposal remains **Proposed**, this packet remains **In Progress**, and the
-complete v2 physical-iPhone measurement remains pending.
+recorded, and Foundation Models is available for that configuration. The
+complete generation benchmark remains unmeasured. No product or architecture
+decision has been selected. The provider proposal remains **Proposed**, this
+packet remains **In Progress**, and the complete v2 physical-iPhone measurement
+remains pending.
