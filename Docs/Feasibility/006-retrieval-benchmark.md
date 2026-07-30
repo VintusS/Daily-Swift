@@ -1,9 +1,10 @@
 # Packet 006 evidence: Retrieval benchmark and decision
 
-**Status:** Pending hosted evidence
+**Status:** Completed
 **Evidence record version:** 1
 **Opened:** 2026-07-29
-**Decision:** Pending
+**Closed:** 2026-07-30
+**Decision:** Direct scan
 **Governing record:** [ADR-006](../Architecture/ADR-006-source-ingestion-and-retrieval.md)
 
 ## Question
@@ -71,32 +72,46 @@ the threshold selects direct scan because it has no index lifecycle.
 
 | Signal | Direct scan | SQLite FTS5 |
 |---|---:|---:|
-| Precision at 1 | Pending | Pending |
-| Precision at 3 | Pending | Pending |
-| Mean reciprocal rank | Pending | Pending |
-| Repeated query time | Pending | Pending |
-| Index build time | Not applicable | Pending |
-| Derived storage | None | Pending |
-| Deterministic repeat/rebuild | Pending | Pending |
-| Exact citations resolve | Pending | Pending |
+| Precision at 1 | 1.0 | 1.0 |
+| Precision at 3 | Not durably captured | Not durably captured |
+| Mean reciprocal rank | 1.0 | 1.0 |
+| Repeated query time | Not durably captured | Not durably captured |
+| Index build time | Not applicable | Not durably captured |
+| Derived storage | None | Not durably captured |
+| Deterministic repeat/rebuild | Passed | Passed |
+| Exact citations resolve | Passed | Passed |
 
 Environment:
 
 | Field | Value |
 |---|---|
-| Workflow | `iOS CI` |
-| Runner | Pending |
-| Xcode | Pending |
-| Simulator | Pending |
-| OS | Pending |
+| Workflow | `iOS CI`, pull-request run `30519289416` |
+| Runner | `macos-26-arm64`, image `20260720.0258.1` |
+| Xcode | 26.5 |
+| Simulator | iPhone 17 |
+| OS | iOS 26.5; runner macOS 26.4 |
 | Corpus entries | 105 |
 | Judgments | 5 |
 | Timing repetitions | 20 |
 
 ## Decision
 
-Pending the hosted `Tests` check and its privacy-safe
-`retrieval-benchmark.txt` evidence.
+Select the deterministic direct scan for Packet 007.
+
+The hosted `Project Hygiene`, `Build`, and `Tests` jobs passed. The focused
+retrieval tests confirmed both candidates' precision-at-1 and reciprocal-rank
+gates, deterministic results, FTS5 deletion/rebuild behavior, filtering, query
+validation before source access, and exact citation resolution. The hosted run
+uploaded no workflow artifacts, and the exact `retrieval-benchmark.txt`
+attachment was not present in its job log. Precision at 3, repeated-query
+durations, FTS5 build duration, and derived storage bytes therefore cannot be
+recorded or estimated.
+
+ADR-006 requires FTS5 to establish every correctness, performance, and storage
+gate before promotion. It also selects direct scan when hosted timing is
+inconclusive. Because the durable evidence does not establish the 50 percent
+timing improvement or the two-times storage ceiling, FTS5 remains experimental
+and Packet 007 uses direct scan without an index lifecycle.
 
 ## Residual risks
 

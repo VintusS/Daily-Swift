@@ -2,6 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-07-28
+**Last amended:** 2026-07-30
 **Owners:** Project maintainers
 
 ## Context
@@ -26,9 +27,10 @@ this decision with a PDFKit adapter, page provenance, and explicit scanned-page
 detection. It does not accept OCR or a retrieval implementation.
 
 Packet 006 adds the fixed retrieval benchmark contract, a deterministic
-direct-scan correctness oracle, and a Debug-only SQLite FTS5 candidate. The
-production retrieval selection remains pending until the hosted benchmark
-evidence is available.
+direct-scan correctness oracle, and a Debug-only SQLite FTS5 candidate. Hosted
+run `30519289416` passed the correctness suite, but did not durably expose the
+timing and storage report required to promote FTS5. The accepted fallback rule
+therefore selects direct scan for production retrieval.
 
 ## Decision
 
@@ -174,6 +176,27 @@ If any gate fails or hosted timing is inconclusive, retain direct scan as the
 Packet 007 implementation and keep FTS5 experimental. Semantic retrieval,
 embeddings, query logging, and generation remain out of scope.
 
+### Packet 006 retrieval selection
+
+Use `DirectScanSourceRetriever` as the Packet 007 production implementation
+behind `SourceRetrieving`. Do not add an FTS index lifecycle, rebuild
+coordinator, or derived retrieval store.
+
+Pull-request run `30519289416` passed `Project Hygiene`, `Build`, and `Tests`.
+The hosted retrieval tests established precision at 1 and mean reciprocal rank
+of 1.0 for both candidates, deterministic direct results and FTS5 rebuilds,
+source filtering and deletion, validation before source access, and exact
+citation resolution. The workflow uploaded no artifact, and its log did not
+contain the attached report. Precision at 3, repeated-query durations, FTS5
+build duration, and derived storage bytes are therefore unavailable.
+
+The selection rule requires affirmative evidence for every FTS5 promotion gate.
+Missing durable timing and storage evidence cannot establish either the
+50-percent speed improvement or the two-times storage ceiling. Direct scan is
+selected without estimating those values. FTS5 remains a Debug-only benchmark
+candidate and may be reconsidered only through a new versioned fixture and
+durably captured evidence.
+
 ### Text PDF extraction and page provenance
 
 Use `PDFKit` behind the app-owned `PDFTextExtracting` protocol. PDFKit types do
@@ -236,10 +259,9 @@ Application Support copy.
 
 ### Select SQLite FTS5 immediately
 
-FTS5 is promising, but no repository fixture currently proves ranking,
-tokenization, rebuild, or storage behavior. Exact chunks and a direct-scan
-oracle are established first; the index choice remains a measured Packet 006
-decision.
+FTS5 passed the bounded correctness fixture but did not durably establish the
+required performance and storage thresholds. Promoting it would add an index
+lifecycle without satisfying the accepted selection rule.
 
 ### Introduce a local package
 
@@ -270,10 +292,11 @@ benefit. Repository-native files remain in the app target.
 - Character offsets refer to normalized text, not byte offsets in the original.
 - PDF line and character offsets refer to normalized extracted text; one-based
   page ranges preserve navigation to the locally stored original.
-- Keyword and semantic ranking remain later decisions.
+- Direct-scan keyword ranking is selected for Packet 007; FTS5 and semantic
+  ranking remain later decisions.
 - Direct scan resolves every candidate before ranking and therefore scales
-  linearly with stored chunks; Packet 006 measures whether FTS5 justifies its
-  derived storage and rebuild complexity.
+  linearly with stored chunks; any future index proposal requires a new durable
+  benchmark before accepting its storage and rebuild complexity.
 
 ## Verification
 
@@ -293,9 +316,10 @@ benefit. Repository-native files remain in the app target.
   the limit without publishing metadata.
 - Measure PDF extraction at the 50 MiB boundary and record that simulator
   resident-memory deltas are not physical-device peak-memory evidence.
-- Run the frozen retrieval judgments against direct scan and SQLite FTS5 in
-  hosted CI; record relevance, deterministic rebuild, timing, and storage
-  evidence before selecting Packet 007 production retrieval.
+- Keep the frozen direct-scan relevance and exact-citation fixtures as
+  production regression coverage. Reconsider FTS5 only with a versioned hosted
+  benchmark that durably records relevance, rebuild, timing, and storage
+  evidence.
 - Run signing-independent Debug and Release builds plus project hygiene.
 
 ## Supersession
