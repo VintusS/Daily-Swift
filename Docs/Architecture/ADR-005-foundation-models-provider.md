@@ -238,6 +238,15 @@ the 28-test iPhone 17 / iOS 26.5 simulator suite pass. The suite contains 27
 unit tests and one UI smoke test. This evidence validates the proposed seam and
 presentation gate only; it does not accept the provider.
 
+On 2026-07-30, the Debug measurement harness was extended to represent the
+predeclared warm-up and 30-run schedule, request-size components, privacy-safe
+device environment, deterministic fallback, and intentionally invalid
+presentation-gate fixture. Signing-independent Debug and Release builds and
+Debug `build-for-testing` pass. A development-signed build installed on an
+iPhone Air (`iPhone18,4`) running iOS 27.0 beta (`24A5390f`), but the initial
+launch was blocked by the locked phone. These are readiness facts, not
+Foundation Models acceptance evidence.
+
 ## Residual risks
 
 - OS and system-model updates can change behavior without a prompt change.

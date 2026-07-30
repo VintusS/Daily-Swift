@@ -75,6 +75,20 @@ enum StructuredGenerationFixtures {
         sourceCards: sourceCards
     )
 
+    static func request(
+        sourceCards: [StructuredGenerationSourceCard]
+    ) -> StructuredGenerationRequest {
+        StructuredGenerationRequest(
+            conceptID: request.conceptID,
+            difficulty: request.difficulty,
+            swiftVersion: request.swiftVersion,
+            minimumIOSVersion: request.minimumIOSVersion,
+            promptVersion: request.promptVersion,
+            schemaVersion: request.schemaVersion,
+            sourceCards: sourceCards
+        )
+    }
+
     static let validArtifact = StructuredGenerationArtifact(
         schemaVersion: 1,
         promptVersion: "structured-generation-v2",
@@ -165,10 +179,86 @@ enum StructuredGenerationFixtures {
         )
     }
 
+    static func validClient(
+        for request: StructuredGenerationRequest
+    ) -> DeterministicStructuredGenerationClient {
+        DeterministicStructuredGenerationClient(
+            outcome: .artifact(validArtifact(for: request))
+        )
+    }
+
     static var invalidClient: DeterministicStructuredGenerationClient {
         DeterministicStructuredGenerationClient(
             outcome: .artifact(invalidArtifact)
         )
+    }
+
+    private static func validArtifact(
+        for request: StructuredGenerationRequest
+    ) -> StructuredGenerationArtifact {
+        guard let citationID = request.sourceCards.first?.id else {
+            return validArtifact
+        }
+
+        return StructuredGenerationArtifact(
+            schemaVersion: request.schemaVersion,
+            promptVersion: request.promptVersion,
+            modelVersion: validArtifact.modelVersion,
+            swiftVersion: request.swiftVersion,
+            minimumIOSVersion: request.minimumIOSVersion,
+            lesson: StructuredLessonArtifact(
+                title: request.sourceCards[0].title,
+                learningObjective: """
+                    Recognize the selected structured-generation constraint.
+                    """,
+                explanation: request.sourceCards[0].text,
+                exampleCode: exampleCode(
+                    for: request.sourceCards[0].id
+                ),
+                citationIDs: [citationID]
+            ),
+            exercise: StructuredMultipleChoiceExercise(
+                prompt: """
+                    Which option identifies the source of this deterministic \
+                    fallback lesson?
+                    """,
+                choices: [
+                    StructuredGenerationChoice(
+                        id: "choice-1",
+                        text: request.sourceCards[0].title
+                    ),
+                    StructuredGenerationChoice(
+                        id: "choice-2",
+                        text: "An unrelated network requirement"
+                    ),
+                    StructuredGenerationChoice(
+                        id: "choice-3",
+                        text: "An unverified cloud response"
+                    ),
+                ],
+                correctChoiceID: "choice-1",
+                explanation: """
+                    The first option is the selected project-authored source \
+                    card; the other options are not supplied evidence.
+                    """,
+                citationIDs: [citationID]
+            )
+        )
+    }
+
+    private static func exampleCode(for sourceCardID: String) -> String {
+        switch sourceCardID {
+        case "main-actor-state":
+            "@MainActor final class LessonViewModel {}"
+        case "stale-result-protection":
+            "guard operationID == activeOperationID else { return }"
+        case "deterministic-validation":
+            "try validator.validate(candidate, for: request)"
+        case "cooperative-cancellation":
+            "generationTask.cancel()"
+        default:
+            "preconditionFailure(\"Unknown fixture\")"
+        }
     }
 }
 #endif
