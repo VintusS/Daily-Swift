@@ -34,6 +34,7 @@ struct StructuredGenerationView: View {
             .accessibilityIdentifier("structured-generation.title")
         }
         .task {
+            await StructuredGenerationEvidenceReporter.reportIfRequested()
             refreshDeviceSnapshot()
             viewModel.checkAvailability()
         }

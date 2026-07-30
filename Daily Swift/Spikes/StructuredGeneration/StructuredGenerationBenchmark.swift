@@ -169,4 +169,50 @@ struct StructuredGenerationDeviceSnapshot: Equatable, Sendable {
         }
     }
 }
+
+enum StructuredGenerationEvidenceReporter {
+    static let launchArgument =
+        "--report-structured-generation-environment"
+
+    @MainActor
+    static func reportIfRequested() async {
+        guard ProcessInfo.processInfo.arguments.contains(launchArgument) else {
+            return
+        }
+
+        let snapshot = StructuredGenerationDeviceSnapshot.capture()
+        let availability = await FoundationModelGenerationClient()
+            .availability()
+        let fields = [
+            "hardware=\(snapshot.hardwareIdentifier)",
+            "os=\(snapshot.operatingSystem)",
+            "locale=\(snapshot.localeIdentifier)",
+            "region=\(snapshot.regionIdentifier)",
+            "modelAvailability=\(label(for: availability))",
+            "power=\(snapshot.powerState)",
+            "battery=\(snapshot.batteryLevel)",
+            "thermal=\(snapshot.thermalState)",
+        ]
+        print("Packet 000-A environment | \(fields.joined(separator: " | "))")
+    }
+
+    static func label(
+        for availability: StructuredGenerationAvailability
+    ) -> String {
+        switch availability {
+        case .available:
+            "available"
+        case .unavailable(.deviceNotSupported):
+            "device-not-supported"
+        case .unavailable(.intelligenceDisabled):
+            "apple-intelligence-disabled"
+        case .unavailable(.modelNotReady):
+            "model-not-ready"
+        case .unavailable(.languageOrRegionUnsupported):
+            "locale-or-region-unsupported"
+        case .unavailable(.other):
+            "other-unavailable"
+        }
+    }
+}
 #endif
