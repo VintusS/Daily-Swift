@@ -25,6 +25,11 @@ Packet 005 subsequently measured text-PDF extraction on iOS 26.5 and extends
 this decision with a PDFKit adapter, page provenance, and explicit scanned-page
 detection. It does not accept OCR or a retrieval implementation.
 
+Packet 006 adds the fixed retrieval benchmark contract, a deterministic
+direct-scan correctness oracle, and a Debug-only SQLite FTS5 candidate. The
+production retrieval selection remains pending until the hosted benchmark
+evidence is available.
+
 ## Decision
 
 ### Domain and service boundary
@@ -115,10 +120,59 @@ snapshots around extraction, not sampled peak memory, and do not establish
 physical-device thermal behavior.
 
 Chunk locations are rebuildable from the normalized file and normalization
-version. A later retrieval packet will keep a deterministic direct-scan oracle
-and benchmark it against SQLite FTS5 before selecting a production keyword
-index. Semantic reranking and `NLEmbedding` remain unselected until fixtures
-show material benefit.
+version. Packet 006 keeps a deterministic direct-scan oracle and benchmarks it
+against SQLite FTS5 before selecting a production keyword index. Semantic
+reranking and `NLEmbedding` remain unselected until fixtures show material
+benefit.
+
+### Retrieval benchmark contract
+
+Use application-owned `SourceRetrievalRequest`, `SourceRetrievalMatch`, and
+`SourceRetrievalFailure` values. Validate an input before restoring or resolving
+any private source:
+
+- trim the query and reject empty or stop-word-only input;
+- limit queries to 200 Swift `Character` values;
+- limit results to at most eight;
+- normalize case, width, diacritics, punctuation, common stop words, and a
+  conservative set of English inflections deterministically;
+- optionally constrain retrieval to an explicit set of source identifiers.
+
+The direct-scan oracle resolves existing chunks through
+`SourceLibraryServing`, so every candidate passes the established source,
+chunk, location, content-hash, and page-provenance checks before ranking. Rank
+term coverage first, then exact term sequence, heading evidence, and bounded
+term frequency. Break ties by stable source and chunk identities. Returned
+matches retain the resolved document, exact citation, excerpt, score, and
+matched normalized terms.
+
+Compare the oracle with a Debug-only SQLite FTS5 index using the same resolved
+corpus and judgments. FTS rows contain a stable entry key, source identifier,
+heading path, and body. Use the built-in Porter/Unicode tokenizer and weighted
+BM25 ranking. Bind query terms and source filters as parameters; never compose
+private text into SQL. The index is private derived data, versioned
+independently, removable, and rebuildable from validated local chunks.
+
+The frozen hosted fixture contains five relevant synthetic chunks and 100
+synthetic distractors. Five judgments cover exact concepts, inflected terms,
+multi-term concepts, shared vocabulary, and source filtering. Record precision
+at 1, precision at 3, reciprocal rank, deterministic equality, repeated query
+time, FTS build time, and derived storage bytes. Time both ranking candidates
+against the same already resolved in-memory corpus; verify restoration,
+citation resolution, filtering, and deletion separately.
+
+Keep direct scan for production unless FTS5:
+
+1. matches the oracle's perfect precision at 1 and reciprocal rank;
+2. returns only exact resolvable citations;
+3. produces identical results across rebuilds;
+4. reduces repeated aggregate query time by at least 50 percent; and
+5. uses no more than twice the normalized fixture byte count for derived
+   storage.
+
+If any gate fails or hosted timing is inconclusive, retain direct scan as the
+Packet 007 implementation and keep FTS5 experimental. Semantic retrieval,
+embeddings, query logging, and generation remain out of scope.
 
 ### Text PDF extraction and page provenance
 
@@ -201,6 +255,8 @@ benefit. Repository-native files remain in the app target.
 - Duplicate detection is deterministic across equivalent normalized files.
 - Source persistence does not migrate or endanger learning evidence.
 - Retrieval implementations can be benchmarked against stable chunks later.
+- Invalid retrieval requests fail before private source text is read.
+- Direct scan provides a deterministic, fail-closed relevance oracle.
 
 ### Negative
 
@@ -215,6 +271,9 @@ benefit. Repository-native files remain in the app target.
 - PDF line and character offsets refer to normalized extracted text; one-based
   page ranges preserve navigation to the locally stored original.
 - Keyword and semantic ranking remain later decisions.
+- Direct scan resolves every candidate before ranking and therefore scales
+  linearly with stored chunks; Packet 006 measures whether FTS5 justifies its
+  derived storage and rebuild complexity.
 
 ## Verification
 
@@ -234,6 +293,9 @@ benefit. Repository-native files remain in the app target.
   the limit without publishing metadata.
 - Measure PDF extraction at the 50 MiB boundary and record that simulator
   resident-memory deltas are not physical-device peak-memory evidence.
+- Run the frozen retrieval judgments against direct scan and SQLite FTS5 in
+  hosted CI; record relevance, deterministic rebuild, timing, and storage
+  evidence before selecting Packet 007 production retrieval.
 - Run signing-independent Debug and Release builds plus project hygiene.
 
 ## Supersession
