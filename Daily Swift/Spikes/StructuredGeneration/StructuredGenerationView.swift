@@ -5,6 +5,10 @@ import SwiftUI
 @MainActor
 struct StructuredGenerationView: View {
     @State private var provider: StructuredGenerationProvider = .fixture
+    @State private var benchmarkEntryID =
+        StructuredGenerationBenchmarkPlan.warmUp.id
+    @State private var deviceSnapshot =
+        StructuredGenerationDeviceSnapshot.capture()
     @State private var viewModel = StructuredGenerationViewModel(
         request: StructuredGenerationFixtures.request,
         client: StructuredGenerationFixtures.validClient
@@ -15,6 +19,8 @@ struct StructuredGenerationView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     introduction
+                    deviceEnvironment
+                    benchmarkControls
                     providerPicker
                     statusCard
                     controls
@@ -28,19 +34,38 @@ struct StructuredGenerationView: View {
             .accessibilityIdentifier("structured-generation.title")
         }
         .task {
+            refreshDeviceSnapshot()
             viewModel.checkAvailability()
         }
         .onChange(of: provider) { _, newProvider in
-            viewModel.cancel()
-            viewModel = Self.makeViewModel(for: newProvider)
-            viewModel.checkAvailability()
+            replaceViewModel(for: newProvider)
+        }
+        .onChange(of: benchmarkEntryID) { _, _ in
+            replaceViewModel(for: provider)
         }
         .onChange(of: viewModel.state) { _, _ in
+            refreshDeviceSnapshot()
             AccessibilityNotification.Announcement(
                 "\(statusTitle). \(statusDetail)"
             )
             .post()
         }
+    }
+
+    private var selectedBenchmarkEntry: StructuredGenerationBenchmarkEntry {
+        StructuredGenerationBenchmarkPlan.entries.first {
+            $0.id == benchmarkEntryID
+        } ?? StructuredGenerationBenchmarkPlan.warmUp
+    }
+
+    private var selectedRequest: StructuredGenerationRequest {
+        StructuredGenerationBenchmarkPlan.request(
+            for: selectedBenchmarkEntry
+        )
+    }
+
+    private var requestSize: FoundationModelRequestSize? {
+        try? FoundationModelGenerationClient.requestSize(for: selectedRequest)
     }
 
     private var introduction: some View {
@@ -55,6 +80,140 @@ struct StructuredGenerationView: View {
         }
     }
 
+    private var deviceEnvironment: some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 10) {
+                measurementRow(
+                    "Hardware",
+                    value: deviceSnapshot.hardwareIdentifier
+                )
+                measurementRow(
+                    "Operating system",
+                    value: deviceSnapshot.operatingSystem
+                )
+                measurementRow(
+                    "Locale / region",
+                    value: "\(deviceSnapshot.localeIdentifier) / "
+                        + deviceSnapshot.regionIdentifier
+                )
+                measurementRow(
+                    "Model availability",
+                    value: modelAvailabilitySummary
+                )
+                measurementRow(
+                    "Power / battery",
+                    value: "\(deviceSnapshot.powerState) / "
+                        + deviceSnapshot.batteryLevel
+                )
+                measurementRow(
+                    "Thermal state",
+                    value: deviceSnapshot.thermalState
+                )
+
+                Button("Refresh environment") {
+                    refreshDeviceSnapshot()
+                    if provider == .onDevice {
+                        viewModel.checkAvailability()
+                    }
+                }
+                .buttonStyle(.bordered)
+                .disabled(isBusy)
+                .accessibilityIdentifier(
+                    "structured-generation.refresh-environment"
+                )
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } label: {
+            Label("Physical-device environment", systemImage: "iphone")
+        }
+        .accessibilityIdentifier(
+            "structured-generation.device-environment"
+        )
+    }
+
+    private var benchmarkControls: some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 12) {
+                Picker("Benchmark step", selection: $benchmarkEntryID) {
+                    ForEach(StructuredGenerationBenchmarkPlan.entries) { entry in
+                        Text("\(entry.title): \(entry.sourceCardSummary)")
+                            .tag(entry.id)
+                    }
+                }
+                .pickerStyle(.menu)
+                .accessibilityIdentifier(
+                    "structured-generation.benchmark-step"
+                )
+
+                Text(
+                    "\(selectedBenchmarkEntry.sourceCardSummary) · "
+                        + "\(selectedRequest.sourceCards.count) bounded "
+                        + "source card(s)"
+                )
+                .font(.subheadline)
+
+                benchmarkNavigation
+
+                if let requestSize {
+                    VStack(alignment: .leading, spacing: 6) {
+                        measurementRow(
+                            "Instructions",
+                            value: "\(requestSize.instructionsUTF8Bytes) bytes"
+                        )
+                        measurementRow(
+                            "Rendered prompt",
+                            value: "\(requestSize.promptUTF8Bytes) bytes"
+                        )
+                        measurementRow(
+                            "Runtime schema JSON",
+                            value: "\(requestSize.schemaJSONBytes) bytes"
+                        )
+                        measurementRow(
+                            "Declared total",
+                            value: "\(requestSize.totalUTF8Bytes) bytes"
+                        )
+                    }
+                    .accessibilityIdentifier(
+                        "structured-generation.request-size"
+                    )
+                } else {
+                    Text("Request size could not be calculated.")
+                        .foregroundStyle(.secondary)
+                }
+
+                Text(
+                    "Warm-up is unscored. Runs 1–30 use the frozen order. "
+                        + "Screen recording and Instruments remain the "
+                        + "authoritative timing and memory evidence."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } label: {
+            Label("Device evidence run", systemImage: "list.number")
+        }
+        .accessibilityIdentifier("structured-generation.benchmark")
+    }
+
+    private var benchmarkNavigation: some View {
+        HStack(spacing: 12) {
+            Button("Previous") {
+                moveBenchmarkSelection(by: -1)
+            }
+            .buttonStyle(.bordered)
+            .disabled(benchmarkEntryID == 0 || isBusy)
+
+            Button(
+                benchmarkEntryID == 0 ? "Start run 1" : "Next"
+            ) {
+                moveBenchmarkSelection(by: 1)
+            }
+            .buttonStyle(.bordered)
+            .disabled(benchmarkEntryID == 30 || isBusy)
+        }
+    }
+
     private var providerPicker: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Provider")
@@ -65,8 +224,17 @@ struct StructuredGenerationView: View {
                     Text(provider.title).tag(provider)
                 }
             }
-            .pickerStyle(.segmented)
+            .pickerStyle(.menu)
             .accessibilityIdentifier("structured-generation.provider")
+
+            if provider == .invalidFixture {
+                Text(
+                    "This fixture is intentionally invalid and uncited. "
+                        + "Generate it to verify that presentation is blocked."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
         }
     }
 
@@ -257,7 +425,7 @@ struct StructuredGenerationView: View {
     }
 
     private var statusTitle: String {
-        switch viewModel.state {
+        return switch viewModel.state {
         case .idle:
             "Not checked"
         case .checkingAvailability:
@@ -325,6 +493,40 @@ struct StructuredGenerationView: View {
         }
     }
 
+    private var modelAvailabilitySummary: String {
+        guard provider == .onDevice else {
+            return "Select On-device to measure"
+        }
+
+        return switch viewModel.state {
+        case .idle:
+            "Not checked"
+        case .checkingAvailability:
+            "Checking"
+        case .unavailable(.deviceNotSupported):
+            "Device not eligible"
+        case .unavailable(.intelligenceDisabled):
+            "Apple Intelligence disabled"
+        case .unavailable(.modelNotReady):
+            "Model not ready"
+        case .unavailable(.languageOrRegionUnsupported):
+            "Locale or region unsupported"
+        case .unavailable(.other):
+            "Unavailable for an unrecognized reason"
+        case .ready, .generating, .content, .rejected, .failed, .cancelled:
+            "Foundation Models available"
+        }
+    }
+
+    private var isBusy: Bool {
+        switch viewModel.state {
+        case .checkingAvailability, .generating:
+            true
+        default:
+            false
+        }
+    }
+
     private func unavailabilityDetail(
         _ reason: StructuredGenerationUnavailability
     ) -> String {
@@ -360,19 +562,70 @@ struct StructuredGenerationView: View {
         }
     }
 
-    private static func makeViewModel(
+    private func replaceViewModel(
         for provider: StructuredGenerationProvider
+    ) {
+        viewModel.cancel()
+        viewModel = Self.makeViewModel(
+            for: provider,
+            request: selectedRequest
+        )
+        refreshDeviceSnapshot()
+        viewModel.checkAvailability()
+    }
+
+    private func refreshDeviceSnapshot() {
+        deviceSnapshot = StructuredGenerationDeviceSnapshot.capture()
+    }
+
+    private func moveBenchmarkSelection(by offset: Int) {
+        let proposedID = benchmarkEntryID + offset
+        guard (0...30).contains(proposedID) else {
+            return
+        }
+        benchmarkEntryID = proposedID
+    }
+
+    private func measurementRow(
+        _ label: String,
+        value: String
+    ) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(label)
+                Spacer(minLength: 12)
+                Text(value)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.trailing)
+                    .textSelection(.enabled)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label)
+                Text(value)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private static func makeViewModel(
+        for provider: StructuredGenerationProvider,
+        request: StructuredGenerationRequest
     ) -> StructuredGenerationViewModel {
         let client: any StructuredGenerationClient
         switch provider {
         case .fixture:
-            client = StructuredGenerationFixtures.validClient
+            client = StructuredGenerationFixtures.validClient(for: request)
+        case .invalidFixture:
+            client = StructuredGenerationFixtures.invalidClient
         case .onDevice:
             client = FoundationModelGenerationClient()
         }
 
         return StructuredGenerationViewModel(
-            request: StructuredGenerationFixtures.request,
+            request: request,
             client: client
         )
     }
@@ -380,6 +633,7 @@ struct StructuredGenerationView: View {
 
 private enum StructuredGenerationProvider: String, CaseIterable, Identifiable {
     case fixture
+    case invalidFixture
     case onDevice
 
     var id: Self { self }
@@ -387,7 +641,9 @@ private enum StructuredGenerationProvider: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .fixture:
-            "Fixture"
+            "Deterministic fixture"
+        case .invalidFixture:
+            "Invalid gate fixture"
         case .onDevice:
             "On-device"
         }

@@ -202,6 +202,30 @@ The 2026-07-27 and 2026-07-28 iPhone 17 / iOS 26.5 simulator runs established:
 This evidence completes only the deterministic simulator portion of the packet.
 It does not count toward the physical-device benchmark or select a decision.
 
+### Physical-device harness readiness
+
+The 2026-07-30 measurement preparation adds a Debug-only selector for the
+unscored warm-up and every entry in the frozen 30-run schedule. For the selected
+entry, it shows only source aliases and the predeclared UTF-8 request-size
+components: session instructions, rendered prompt, sorted-key runtime-schema
+JSON, and their total. It also shows the hardware identifier, operating-system
+version, locale/region, Foundation Models availability category, power/battery,
+and current thermal category.
+
+The selector does not execute a run automatically, score a candidate, calculate
+authoritative latency, or sample process memory. The operator must still use
+60-fps screen-recording timecodes for latency and cancellation and Instruments
+VM Tracker for memory. Selecting the invalid gate fixture routes its invalid and
+uncited artifact through the same view model, deterministic validator, and
+presentation gate; rejected values remain absent from diagnostics.
+
+A development-signed Debug build compiled with Xcode 26.5 and installed
+successfully on the declared iPhone Air on 2026-07-30 through CoreDevice. The
+phone was locked when the first launch was attempted, so installation proves
+only build/sign/install compatibility. It does not prove app launch, model
+availability, generation quality, accessibility, latency, memory, power, or
+thermal behavior.
+
 ### Physical-iPhone evidence
 
 Only a supported physical iPhone may establish:
@@ -229,8 +253,8 @@ run.
 | Domain artifact schema | 1 |
 | Provider candidate schema | 2 |
 | Prompt version | `structured-generation-v2` |
-| Physical iPhone model | Not measured |
-| Device OS version and build | Not measured |
+| Physical iPhone model | iPhone Air (`iPhone18,4`), identified by CoreDevice; benchmark not run |
+| Device OS version and build | iOS 27.0 beta (`24A5390f`); benchmark not run |
 | Locale and region | Not measured |
 | Apple Intelligence state | Not measured |
 | Power state | Not measured |
@@ -284,6 +308,15 @@ The frozen four-card manifest uses these aliases only for the schedule:
 | C | `deterministic-validation` |
 | D | `cooperative-cancellation` |
 
+The fixture manifest is frozen before device measurement:
+
+| Alias | Source-card identity | Text UTF-8 bytes | SHA-256 |
+|---|---|---:|---|
+| A | `main-actor-state` | 189 | `535e5d50fc1c363111a2c2035e9c7c1e754319fe014b4db0b8922d146147db82` |
+| B | `stale-result-protection` | 201 | `68d1b609465457ca7473961e781e111348c6ceebeeee6fd5b9c1a4eb5d3c0927` |
+| C | `deterministic-validation` | 180 | `40e6f797aa9f8a9ed05697c6e8a1e022d53cb32c511917451205b5b13f6f23bd` |
+| D | `cooperative-cancellation` | 175 | `35a76a76025907dccdf1cfb9974bf4e91f93292b39263e21194dbe7508c9b95a` |
+
 | Runs | Frozen subset |
 |---|---|
 | 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 30 | A + B + C + D |
@@ -298,7 +331,7 @@ post hoc.
 
 ## Run table template
 
-| Run | Source cards | Total request size | Lesson valid | Exercise valid | Combined first-pass accepted | Rejection category | Warm latency | Peak memory observation | Start/worst/end thermal state | Notes |
+| Run | Source cards | Request size: instructions + prompt + schema = total | Lesson valid | Exercise valid | Combined first-pass accepted | Rejection category | Warm latency | Peak memory observation | Start/worst/end thermal state | Notes |
 |---:|---:|---:|---|---|---|---|---:|---|---|---|
 | — | — | — | Not measured | Not measured | Not measured | — | Not measured | Not measured | Not measured | Physical-device run pending |
 
@@ -384,7 +417,10 @@ confirm:
 
 ## Current conclusion
 
-The isolated debug implementation uses the v2 deterministic identity boundary.
-No product or architecture decision has been selected. The provider proposal
-remains **Proposed**, this packet remains **In Progress**, and the complete v2
-physical-iPhone measurement remains pending.
+The isolated debug implementation uses the v2 deterministic identity boundary,
+and the measurement harness now represents the frozen schedule and request-size
+method. The declared iPhone can accept the development-signed app, but no launch
+or benchmark result has been recorded. No product or architecture decision has
+been selected. The provider proposal remains **Proposed**, this packet remains
+**In Progress**, and the complete v2 physical-iPhone measurement remains
+pending.
