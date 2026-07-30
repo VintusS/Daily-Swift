@@ -521,6 +521,56 @@ final class DailySwiftUITests: XCTestCase {
     }
 
     @MainActor
+    func testImportedPDFPassageSearchOpensExactPageCitation() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--ui-testing",
+            "--app-shell-scenario=ready",
+            "--learning-studio-scenario=empty",
+            "--source-library-scenario=seeded-pdf",
+        ]
+
+        app.launch()
+        app.tabBars.buttons["Library"].tap()
+
+        let searchField = app.searchFields[
+            "Search articles and passages"
+        ]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 5))
+        searchField.tap()
+        searchField.typeText("page provenance")
+
+        let keyboardSearch = app.keyboards.buttons["Search"]
+        XCTAssertTrue(keyboardSearch.waitForExistence(timeout: 5))
+        keyboardSearch.tap()
+
+        let result = app.buttons["source-retrieval.result.0"]
+        XCTAssertTrue(result.waitForExistence(timeout: 5))
+        result.tap()
+
+        XCTAssertTrue(
+            app.descendants(matching: .any)["citation.reader"]
+                .waitForExistence(timeout: 5)
+        )
+        XCTAssertTrue(
+            app.staticTexts["Page 1"].waitForExistence(timeout: 5)
+        )
+
+        let openPageButton = app.buttons["citation.open-pdf-page"]
+        XCTAssertTrue(openPageButton.waitForExistence(timeout: 5))
+        openPageButton.tap()
+
+        XCTAssertTrue(
+            app.descendants(matching: .any)["citation.pdf-page"]
+                .waitForExistence(timeout: 5)
+        )
+        XCTAssertTrue(
+            app.navigationBars["Original PDF · Page 1"]
+                .waitForExistence(timeout: 5)
+        )
+    }
+
+    @MainActor
     func testImportedSourceOpensExactCitationAndDeletes() throws {
         let app = XCUIApplication()
         app.launchArguments = [
@@ -672,6 +722,9 @@ final class DailySwiftUITests: XCTestCase {
         let sourceRow = app.buttons[
             "source.open.45454545-4545-4545-4545-454545454545"
         ]
+        for _ in 0..<6 where !sourceRow.exists {
+            app.swipeUp()
+        }
         XCTAssertTrue(sourceRow.waitForExistence(timeout: 5))
         sourceRow.tap()
 
@@ -773,6 +826,9 @@ final class DailySwiftUITests: XCTestCase {
         let sourceRow = app.buttons[
             "source.open.44444444-4444-4444-4444-444444444444"
         ]
+        for _ in 0..<6 where !sourceRow.exists {
+            app.swipeUp()
+        }
         XCTAssertTrue(sourceRow.waitForExistence(timeout: 5))
         sourceRow.tap()
 
