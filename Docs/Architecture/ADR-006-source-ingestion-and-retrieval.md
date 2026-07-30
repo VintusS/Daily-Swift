@@ -352,9 +352,10 @@ benefit. Repository-native files remain in the app target.
 - Unit-test source diversification, source filters, deletion reconciliation,
   stale citation failure, cancellation, retry, and obsolete-result
   suppression.
-- UI-test a concept query through one exact offline citation and keep loading,
-  no-result, failed, cancelled, filter, Dynamic Type, VoiceOver, contrast, and
-  Reduce Motion presentation in the Packet 007 accessibility matrix.
+- UI-test concept queries through exact TXT/Markdown and PDF offline citations
+  and keep loading, no-result, failed, cancelled, filter, Dynamic Type,
+  VoiceOver, contrast, and Reduce Motion presentation in the Packet 007
+  accessibility matrix.
 - Run signing-independent Debug and Release builds plus project hygiene.
 
 ## Supersession
