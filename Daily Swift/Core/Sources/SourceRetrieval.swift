@@ -84,6 +84,9 @@ actor DirectScanSourceRetriever: SourceRetrieving {
         let corpus = try await corpusLoader.load(
             sourceIDs: request.sourceIDs
         )
+        guard !Task.isCancelled else {
+            throw .cancelled
+        }
         return Self.rank(
             corpus,
             for: request
@@ -94,7 +97,7 @@ actor DirectScanSourceRetriever: SourceRetrieving {
         _ corpus: [SourceRetrievalCorpusEntry],
         for request: ValidatedSourceRetrievalRequest
     ) -> [SourceRetrievalMatch] {
-        corpus.compactMap { entry in
+        let ranked = corpus.compactMap { entry in
             let bodyTerms = SourceRetrievalTokenizer.tokens(
                 in: entry.resolvedCitation.excerpt,
                 keepingDuplicates: true
@@ -149,7 +152,11 @@ actor DirectScanSourceRetriever: SourceRetrieving {
             )
         }
         .sorted(by: isOrderedBefore)
-        .prefix(request.resultLimit)
+
+        return diversified(
+            ranked,
+            resultLimit: request.resultLimit
+        )
         .map(\.match)
     }
 
@@ -202,6 +209,32 @@ actor DirectScanSourceRetriever: SourceRetrieving {
         }
         return lhs.match.citation.chunkID
             < rhs.match.citation.chunkID
+    }
+
+    private static func diversified(
+        _ ranked: [RankedMatch],
+        resultLimit: Int
+    ) -> [RankedMatch] {
+        var representedSourceIDs: Set<UUID> = []
+        var diverseResults: [RankedMatch] = []
+        var remainingResults: [RankedMatch] = []
+        diverseResults.reserveCapacity(resultLimit)
+        remainingResults.reserveCapacity(resultLimit)
+
+        for result in ranked {
+            if representedSourceIDs.insert(
+                result.match.document.id
+            ).inserted {
+                diverseResults.append(result)
+            } else {
+                remainingResults.append(result)
+            }
+        }
+
+        return Array(
+            (diverseResults + remainingResults)
+                .prefix(resultLimit)
+        )
     }
 
     private struct RankedMatch {

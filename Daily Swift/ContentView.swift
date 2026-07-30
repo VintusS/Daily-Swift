@@ -12,6 +12,7 @@ struct ContentView: View {
     private let rootViewModel: AppRootViewModel
     private let learningStudioViewModel: LearningStudioViewModel
     private let sourceLibraryViewModel: SourceLibraryViewModel
+    private let sourceRetrievalViewModel: SourceRetrievalViewModel
     private let launchConfiguration: AppLaunchConfiguration
 
     init(environment: AppEnvironment = .live()) {
@@ -21,6 +22,8 @@ struct ContentView: View {
                 environment.makeLearningStudioViewModel(),
             sourceLibraryViewModel:
                 environment.makeSourceLibraryViewModel(),
+            sourceRetrievalViewModel:
+                environment.makeSourceRetrievalViewModel(),
             launchConfiguration: environment.launchConfiguration
         )
     }
@@ -29,11 +32,13 @@ struct ContentView: View {
         rootViewModel: AppRootViewModel,
         learningStudioViewModel: LearningStudioViewModel,
         sourceLibraryViewModel: SourceLibraryViewModel,
+        sourceRetrievalViewModel: SourceRetrievalViewModel,
         launchConfiguration: AppLaunchConfiguration
     ) {
         self.rootViewModel = rootViewModel
         self.learningStudioViewModel = learningStudioViewModel
         self.sourceLibraryViewModel = sourceLibraryViewModel
+        self.sourceRetrievalViewModel = sourceRetrievalViewModel
         self.launchConfiguration = launchConfiguration
     }
 
@@ -45,14 +50,16 @@ struct ContentView: View {
             AppRootView(
                 viewModel: rootViewModel,
                 learningStudioViewModel: learningStudioViewModel,
-                sourceLibraryViewModel: sourceLibraryViewModel
+                sourceLibraryViewModel: sourceLibraryViewModel,
+                sourceRetrievalViewModel: sourceRetrievalViewModel
             )
         }
 #else
         AppRootView(
             viewModel: rootViewModel,
             learningStudioViewModel: learningStudioViewModel,
-            sourceLibraryViewModel: sourceLibraryViewModel
+            sourceLibraryViewModel: sourceLibraryViewModel,
+            sourceRetrievalViewModel: sourceRetrievalViewModel
         )
 #endif
     }

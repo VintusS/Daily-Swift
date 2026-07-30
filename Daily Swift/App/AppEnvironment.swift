@@ -152,6 +152,7 @@ struct AppEnvironment {
     let learningRouter: LearningStudioRouter
     let learningCatalog: LearningCatalog
     let sourceLibraryService: any SourceLibraryServing
+    let sourceRetriever: any SourceRetrieving
     let launchConfiguration: AppLaunchConfiguration
 
     init(
@@ -163,6 +164,7 @@ struct AppEnvironment {
         learningCatalog: LearningCatalog = SeedCurriculumProvider.catalog,
         sourceLibraryService: any SourceLibraryServing =
             InMemorySourceLibraryService(),
+        sourceRetriever: (any SourceRetrieving)? = nil,
         launchConfiguration: AppLaunchConfiguration = AppLaunchConfiguration(
             arguments: []
         )
@@ -173,6 +175,10 @@ struct AppEnvironment {
         self.learningRouter = learningRouter
         self.learningCatalog = learningCatalog
         self.sourceLibraryService = sourceLibraryService
+        self.sourceRetriever = sourceRetriever
+            ?? DirectScanSourceRetriever(
+                sourceLibrary: sourceLibraryService
+            )
         self.launchConfiguration = launchConfiguration
     }
 
@@ -247,6 +253,10 @@ struct AppEnvironment {
 
     func makeSourceLibraryViewModel() -> SourceLibraryViewModel {
         SourceLibraryViewModel(service: sourceLibraryService)
+    }
+
+    func makeSourceRetrievalViewModel() -> SourceRetrievalViewModel {
+        SourceRetrievalViewModel(retriever: sourceRetriever)
     }
 
     private static func learningProgressStore(

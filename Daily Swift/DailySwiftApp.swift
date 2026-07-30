@@ -14,6 +14,7 @@ struct DailySwiftApp: App {
     private let rootViewModel: AppRootViewModel
     private let learningStudioViewModel: LearningStudioViewModel
     private let sourceLibraryViewModel: SourceLibraryViewModel
+    private let sourceRetrievalViewModel: SourceRetrievalViewModel
 
     init() {
         let environment = AppEnvironment.live()
@@ -23,6 +24,8 @@ struct DailySwiftApp: App {
             environment.makeLearningStudioViewModel()
         sourceLibraryViewModel =
             environment.makeSourceLibraryViewModel()
+        sourceRetrievalViewModel =
+            environment.makeSourceRetrievalViewModel()
     }
 
     var body: some Scene {
@@ -31,6 +34,7 @@ struct DailySwiftApp: App {
                 rootViewModel: rootViewModel,
                 learningStudioViewModel: learningStudioViewModel,
                 sourceLibraryViewModel: sourceLibraryViewModel,
+                sourceRetrievalViewModel: sourceRetrievalViewModel,
                 launchConfiguration: environment.launchConfiguration
             )
         }
