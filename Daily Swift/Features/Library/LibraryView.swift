@@ -6,8 +6,10 @@ struct LibraryView: View {
     let catalog: LearningCatalog
     let snapshot: LearningProgressSnapshot
     @Bindable var sourceLibraryViewModel: SourceLibraryViewModel
+    @Bindable var sourceRetrievalViewModel: SourceRetrievalViewModel
     let onOpenArticle: (String) -> Void
     let onOpenSource: (UUID) -> Void
+    let onOpenCitation: (SourceCitation) -> Void
 
     @State private var searchText = ""
     @State private var showsBookmarksOnly = false
@@ -64,6 +66,18 @@ struct LibraryView: View {
             }
 
             if !showsBookmarksOnly {
+                if sourceLibraryViewModel.state == .ready,
+                   !sourceLibraryViewModel.documents.isEmpty {
+                    SourceRetrievalSection(
+                        query: searchText,
+                        documents: sourceLibraryViewModel.documents,
+                        viewModel: sourceRetrievalViewModel,
+                        onSearch: searchImportedPassages,
+                        onOpenCitation: onOpenCitation,
+                        onFiltersChanged: searchAfterFilterChange
+                    )
+                }
+
                 Section {
                     switch sourceLibraryViewModel.state {
                     case .loading:
@@ -156,7 +170,9 @@ struct LibraryView: View {
                 }
             }
 
-            if visibleArticles.isEmpty && visibleSources.isEmpty {
+            if visibleArticles.isEmpty
+                && visibleSources.isEmpty
+                && sourceRetrievalViewModel.resultCount == 0 {
                 Section {
                     ContentUnavailableView(
                         showsBookmarksOnly
@@ -204,8 +220,9 @@ struct LibraryView: View {
         .searchable(
             text: $searchText,
             placement: .navigationBarDrawer(displayMode: .automatic),
-            prompt: "Search articles"
+            prompt: "Search articles and passages"
         )
+        .onSubmit(of: .search, searchImportedPassages)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button {
@@ -276,6 +293,25 @@ struct LibraryView: View {
         }
         .task {
             await sourceLibraryViewModel.loadIfNeeded()
+            reconcileRetrievalSources()
+        }
+        .onChange(of: searchText) {
+            _, _ in
+            sourceRetrievalViewModel.queryChanged()
+        }
+        .onChange(of: sourceLibraryViewModel.snapshot) {
+            _, _ in
+            reconcileRetrievalSources()
+        }
+        .onChange(of: sourceRetrievalViewModel.state) {
+            _, state in
+            guard let announcement = state.announcement else {
+                return
+            }
+            UIAccessibility.post(
+                notification: .announcement,
+                argument: announcement
+            )
         }
         .onChange(of: sourceLibraryViewModel.feedback) {
             _, feedback in
@@ -294,6 +330,29 @@ struct LibraryView: View {
         [UTType.pdf] + ["txt", "md", "markdown"].compactMap {
             UTType(filenameExtension: $0)
         }
+    }
+
+    private func searchImportedPassages() {
+        guard !showsBookmarksOnly,
+              !sourceLibraryViewModel.documents.isEmpty else {
+            return
+        }
+        sourceRetrievalViewModel.search(query: searchText)
+    }
+
+    private func searchAfterFilterChange() {
+        guard !searchText.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        ).isEmpty else {
+            return
+        }
+        searchImportedPassages()
+    }
+
+    private func reconcileRetrievalSources() {
+        sourceRetrievalViewModel.reconcileAvailableSources(
+            Set(sourceLibraryViewModel.documents.map(\.id))
+        )
     }
 }
 

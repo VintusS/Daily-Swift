@@ -5,12 +5,17 @@ struct AppRootView: View {
     @State private var viewModel: AppRootViewModel
     @State private var learningStudioViewModel: LearningStudioViewModel
     @State private var sourceLibraryViewModel: SourceLibraryViewModel
+    @State private var sourceRetrievalViewModel: SourceRetrievalViewModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(
         viewModel: AppRootViewModel,
         learningStudioViewModel: LearningStudioViewModel,
-        sourceLibraryViewModel: SourceLibraryViewModel
+        sourceLibraryViewModel: SourceLibraryViewModel,
+        sourceRetrievalViewModel: SourceRetrievalViewModel =
+            SourceRetrievalViewModel(
+                retriever: InMemorySourceRetriever()
+            )
     ) {
         _viewModel = State(initialValue: viewModel)
         _learningStudioViewModel = State(
@@ -18,6 +23,9 @@ struct AppRootView: View {
         )
         _sourceLibraryViewModel = State(
             initialValue: sourceLibraryViewModel
+        )
+        _sourceRetrievalViewModel = State(
+            initialValue: sourceRetrievalViewModel
         )
     }
 
@@ -56,6 +64,7 @@ struct AppRootView: View {
             LearningStudioView(
                 viewModel: learningStudioViewModel,
                 sourceLibraryViewModel: sourceLibraryViewModel,
+                sourceRetrievalViewModel: sourceRetrievalViewModel,
                 onPrivacy: {
                     viewModel.navigate(to: .privacyAndData)
                 }

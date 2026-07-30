@@ -120,6 +120,61 @@ struct SourceRetrievalTests {
         #expect(try await retriever.search(request).isEmpty)
     }
 
+    @Test("Direct scan diversifies sources before ranked fill")
+    func sourceDiversity() async throws {
+        let fixture = RetrievalDiversityFixture()
+        let retriever = DirectScanSourceRetriever(
+            sourceLibrary: fixture.service
+        )
+
+        let results = try await retriever.search(
+            SourceRetrievalRequest(
+                query: "state ownership",
+                resultLimit: 3
+            )
+        )
+
+        #expect(results.count == 3)
+        #expect(results[0].document.id == fixture.primarySourceID)
+        #expect(results[1].document.id == fixture.secondarySourceID)
+        #expect(results[2].document.id == fixture.primarySourceID)
+        #expect(Set(results.prefix(2).map(\.document.id)).count == 2)
+    }
+
+    @Test("Direct scan fails closed for a stale citation")
+    func staleCitationFailsClosed() async {
+        let fixture = RetrievalDiversityFixture(
+            omitNormalizedTextForPrimarySource: true
+        )
+        let retriever = DirectScanSourceRetriever(
+            sourceLibrary: fixture.service
+        )
+
+        await #expect(throws: SourceRetrievalFailure.sourceUnavailable) {
+            try await retriever.search(
+                SourceRetrievalRequest(query: "state ownership")
+            )
+        }
+    }
+
+    @Test("Direct scan reports cooperative cancellation")
+    func cancellation() async {
+        let retriever = DirectScanSourceRetriever(
+            sourceLibrary: CancellableRetrievalSourceLibrary()
+        )
+        let search = Task {
+            try await retriever.search(
+                SourceRetrievalRequest(query: "actor isolation")
+            )
+        }
+        await Task.yield()
+        search.cancel()
+
+        await #expect(throws: SourceRetrievalFailure.cancelled) {
+            try await search.value
+        }
+    }
+
     @Test("SQLite FTS5 compares against the direct-scan oracle")
     func ftsComparison() async throws {
         let fixture = RetrievalBenchmarkFixture()
@@ -367,6 +422,105 @@ struct SourceRetrievalTests {
             + Double(components.attoseconds) / 1_000_000_000_000_000_000
     }
 
+}
+
+private actor CancellableRetrievalSourceLibrary:
+    SourceLibraryServing {
+    func restore() async throws -> SourceLibrarySnapshot {
+        while !Task.isCancelled {
+            await Task.yield()
+        }
+        throw SourceLibraryFailure.readFailed
+    }
+
+    func importSource(
+        _ request: SourceImportRequest
+    ) async throws -> SourceDocument {
+        throw SourceLibraryFailure.writeFailed
+    }
+
+    func resolve(
+        _ citation: SourceCitation
+    ) async throws -> ResolvedSourceCitation {
+        throw SourceLibraryFailure.citationMissing
+    }
+
+    func delete(sourceID: UUID) async throws {}
+}
+
+private struct RetrievalDiversityFixture {
+    let primarySourceID = UUID(
+        uuidString: "63000000-0000-0000-0000-000000000001"
+    )!
+    let secondarySourceID = UUID(
+        uuidString: "63000000-0000-0000-0000-000000000002"
+    )!
+    let service: InMemorySourceLibraryService
+
+    init(omitNormalizedTextForPrimarySource: Bool = false) {
+        let primaryText = SourceTextProcessor.normalize(
+            """
+            # State ownership
+            State ownership gives local data a stable identity and lifecycle.
+
+            ## State ownership in child views
+            State ownership keeps child data attached to the correct identity.
+            """
+        )
+        let secondaryText = SourceTextProcessor.normalize(
+            """
+            # Related ownership
+            State ownership also matters when dependencies cross view boundaries.
+            """
+        )
+        let sources = [
+            (primarySourceID, "Primary state guide", primaryText),
+            (secondarySourceID, "Secondary state guide", secondaryText),
+        ]
+        var documents: [SourceDocument] = []
+        var chunks: [SourceChunk] = []
+        var textBySourceID: [UUID: String] = [:]
+
+        for (sourceID, title, text) in sources {
+            let contentHash = SourceTextProcessor.contentHash(for: text)
+            documents.append(
+                SourceDocument(
+                    id: sourceID,
+                    title: title,
+                    author: "Project Fixture",
+                    publisher: nil,
+                    originFileName: "fixture.md",
+                    rightsStatus: .openLicensed,
+                    contentHash: contentHash,
+                    importedAt: Date(
+                        timeIntervalSince1970: 1_785_200_000
+                    ),
+                    format: .markdown,
+                    byteCount: Data(text.utf8).count
+                )
+            )
+            chunks.append(
+                contentsOf: SourceTextProcessor.chunks(
+                    sourceID: sourceID,
+                    sourceContentHash: contentHash,
+                    normalizedText: text,
+                    format: .markdown
+                )
+            )
+            if sourceID != primarySourceID
+                || !omitNormalizedTextForPrimarySource {
+                textBySourceID[sourceID] = text
+            }
+        }
+
+        service = InMemorySourceLibraryService(
+            snapshot: SourceLibrarySnapshot(
+                documents: documents,
+                chunks: chunks
+            ),
+            normalizedTextBySourceID: textBySourceID
+        )
+    }
 }
 
 private struct RetrievalBenchmarkFixture {

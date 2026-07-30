@@ -5,17 +5,22 @@ import UIKit
 struct LearningStudioView: View {
     @State private var viewModel: LearningStudioViewModel
     @State private var sourceLibraryViewModel: SourceLibraryViewModel
+    @State private var sourceRetrievalViewModel: SourceRetrievalViewModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let onPrivacy: () -> Void
 
     init(
         viewModel: LearningStudioViewModel,
         sourceLibraryViewModel: SourceLibraryViewModel,
+        sourceRetrievalViewModel: SourceRetrievalViewModel,
         onPrivacy: @escaping () -> Void
     ) {
         _viewModel = State(initialValue: viewModel)
         _sourceLibraryViewModel = State(
             initialValue: sourceLibraryViewModel
+        )
+        _sourceRetrievalViewModel = State(
+            initialValue: sourceRetrievalViewModel
         )
         self.onPrivacy = onPrivacy
     }
@@ -122,8 +127,11 @@ struct LearningStudioView: View {
                     catalog: viewModel.catalog,
                     snapshot: viewModel.snapshot,
                     sourceLibraryViewModel: sourceLibraryViewModel,
+                    sourceRetrievalViewModel:
+                        sourceRetrievalViewModel,
                     onOpenArticle: viewModel.openArticle,
-                    onOpenSource: viewModel.router.openSource
+                    onOpenSource: viewModel.router.openSource,
+                    onOpenCitation: viewModel.router.openCitation
                 )
                 .navigationDestination(
                     for: LearningStudioRoute.self,

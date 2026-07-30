@@ -197,6 +197,34 @@ selected without estimating those values. FTS5 remains a Debug-only benchmark
 candidate and may be reconsidered only through a new versioned fixture and
 durably captured evidence.
 
+### Production direct-scan behavior
+
+Packet 007 assembles `DirectScanSourceRetriever` once through `AppEnvironment`
+and injects it behind `SourceRetrieving`. The retrieval actor restores and
+resolves private chunks through `SourceLibraryServing`; the main-actor Library
+view model owns only session-local query, filter, progress, result,
+no-result, cancellation, and privacy-safe failure state.
+
+Apply source diversity after the accepted relevance ordering. Preserve global
+rank while taking the highest-ranked passage from each represented source
+before filling the remaining bounded slots from the original rank. This avoids
+one source monopolizing a result set without changing term scoring or admitting
+an unranked passage. A selected-source filter is an exact set of current stable
+source identifiers and is applied before corpus resolution.
+
+Do not persist or log queries, filter selections, matches, titles, headings,
+excerpts, paths, source identifiers, or document contents. Retrieval performs
+no network, model, sync, analytics, or cloud operation. The Library explicitly
+communicates that search remains available offline.
+
+Starting a new query cancels the prior task, and an operation identity prevents
+an obsolete completion from publishing. Source-library changes cancel active
+retrieval, remove deleted filter identifiers, and remove results whose sources
+no longer exist. The retriever resolves each candidate through the existing
+fail-closed citation boundary; the Library opens the retained citation through
+the existing exact reader. A missing or changed source, chunk, range, hash, or
+PDF page provenance produces a stable unavailable state rather than a result.
+
 ### Text PDF extraction and page provenance
 
 Use `PDFKit` behind the app-owned `PDFTextExtracting` protocol. PDFKit types do
@@ -295,7 +323,8 @@ benefit. Repository-native files remain in the app target.
 - Direct-scan keyword ranking is selected for Packet 007; FTS5 and semantic
   ranking remain later decisions.
 - Direct scan resolves every candidate before ranking and therefore scales
-  linearly with stored chunks; any future index proposal requires a new durable
+  linearly with stored chunks. Queries and result counts remain bounded, work
+  is cancellable, and any future index proposal requires a new durable
   benchmark before accepting its storage and rebuild complexity.
 
 ## Verification
@@ -320,6 +349,12 @@ benefit. Repository-native files remain in the app target.
   production regression coverage. Reconsider FTS5 only with a versioned hosted
   benchmark that durably records relevance, rebuild, timing, and storage
   evidence.
+- Unit-test source diversification, source filters, deletion reconciliation,
+  stale citation failure, cancellation, retry, and obsolete-result
+  suppression.
+- UI-test a concept query through one exact offline citation and keep loading,
+  no-result, failed, cancelled, filter, Dynamic Type, VoiceOver, contrast, and
+  Reduce Motion presentation in the Packet 007 accessibility matrix.
 - Run signing-independent Debug and Release builds plus project hygiene.
 
 ## Supersession

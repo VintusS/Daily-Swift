@@ -462,7 +462,9 @@ final class DailySwiftUITests: XCTestCase {
         )
 
         bookmarkFilter.tap()
-        let searchField = app.searchFields["Search articles"]
+        let searchField = app.searchFields[
+            "Search articles and passages"
+        ]
         XCTAssertTrue(searchField.waitForExistence(timeout: 5))
         searchField.tap()
         searchField.typeText("topic-that-does-not-exist")
@@ -471,6 +473,51 @@ final class DailySwiftUITests: XCTestCase {
             app.staticTexts["No matching articles"]
                 .waitForExistence(timeout: 5)
         )
+    }
+
+    @MainActor
+    func testImportedPassageSearchOpensExactCitation() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--ui-testing",
+            "--app-shell-scenario=ready",
+            "--learning-studio-scenario=empty",
+            "--source-library-scenario=seeded",
+        ]
+
+        app.launch()
+        app.tabBars.buttons["Library"].tap()
+
+        let searchField = app.searchFields[
+            "Search articles and passages"
+        ]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 5))
+        searchField.tap()
+        searchField.typeText("actor isolation")
+
+        let keyboardSearch = app.keyboards.buttons["Search"]
+        XCTAssertTrue(keyboardSearch.waitForExistence(timeout: 5))
+        keyboardSearch.tap()
+
+        let result = app.buttons["source-retrieval.result.0"]
+        XCTAssertTrue(result.waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            app.descendants(matching: .any)[
+                "source-retrieval.offline"
+            ]
+            .exists
+        )
+        result.tap()
+
+        XCTAssertTrue(
+            app.descendants(matching: .any)["citation.reader"]
+                .waitForExistence(timeout: 5)
+        )
+        XCTAssertTrue(
+            app.staticTexts["Exact stored passage"]
+                .waitForExistence(timeout: 5)
+        )
+        XCTAssertTrue(app.staticTexts["Verified offline"].exists)
     }
 
     @MainActor
