@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-07-28
-**Last amended:** 2026-07-30
+**Last amended:** 2026-08-01
 **Owners:** Project maintainers
 
 ## Context
@@ -18,9 +18,11 @@ deletion boundary. Adding source records to that schema would create an
 unnecessary migration and couple learner evidence to rebuildable Knowledge
 Engine data.
 
-Packet 000-B has not measured PDF extraction, OCR, or retrieval ranking. ADR-005
-also remains Proposed pending physical-iPhone evidence. The source foundation
-must therefore be useful without either decision.
+At the time this source foundation began, Packet 000-B had not measured PDF
+extraction, OCR, or retrieval ranking, and ADR-005 was still Proposed pending
+physical-iPhone evidence. ADR-005 now accepts only an experimental provider
+policy; its device promotion evidence remains deferred. The source foundation
+continues to be useful without a model.
 
 Packet 005 subsequently measured text-PDF extraction on iOS 26.5 and extends
 this decision with a PDFKit adapter, page provenance, and explicit scanned-page
@@ -271,6 +273,14 @@ the stored original, normalized text, and future derived indexes or generated
 artifacts keyed to that source. Packet 004 implements the document/chunk/file
 portion and exposes a confirmation before deletion.
 
+Stage the source directory before metadata deletion. On restoration, inspect
+each valid deletion-staging identifier against metadata before changing its
+private bytes: move the directory back when metadata remains, remove it only
+when metadata deletion is confirmed, and preserve it while failing restoration
+if metadata cannot be read. This makes interruption before and after metadata
+commit deterministic without creating a source record whose backing files were
+silently destroyed.
+
 ## Alternatives considered
 
 ### Store original and normalized text in SwiftData
@@ -334,6 +344,9 @@ benefit. Repository-native files remain in the app target.
 - Integration-test import, Application Support copies, restore, exact citation,
   and cascading deletion with an in-memory SwiftData container and temporary
   directory.
+- Integration-test interrupted deletion on both sides of metadata commit:
+  retained metadata restores staged files, while committed deletion removes
+  them.
 - UI-test the source library and exact-citation reader with synthetic fixtures
   where system document-picker automation is not stable.
 - Unit-test PDFKit extraction with synthetic project-owned text and image-only

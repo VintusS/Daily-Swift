@@ -1,9 +1,10 @@
 # Packet 000-A evidence: Structured local generation
 
-**Status:** In Progress
+**Status:** Deferred by owner
 **Evidence record version:** 2
 **Opened:** 2026-07-27
-**Decision:** Pending physical-iPhone evidence
+**Deferred:** 2026-08-01
+**Decision:** Not selected; physical-iPhone generation evidence remains unmeasured
 **Governing record:** [ADR-005](../Architecture/ADR-005-foundation-models-provider.md)
 
 ## Question
@@ -15,6 +16,19 @@ safe state transitions, local privacy, and a useful model-unavailable fallback?
 This record declares the decision thresholds and collection method before
 device measurement. Empty result fields mean **not measured**. Host or simulator
 results must not be presented as physical-device evidence.
+
+On 2026-08-01, the owner directed development to proceed to an experimental,
+foreground generated-learning slice without completing this benchmark. The
+deferral is not a go, constrained-go, or no-go result. Every missing latency,
+quality, cancellation, memory, energy, thermal, and accessibility result
+remains unmeasured, and the thresholds below remain unchanged for any future
+provider-promotion decision.
+
+Packet 008's hosted build/test checks and manual visual or accessibility review
+can accept that experimental UI slice only. They cannot populate this physical-
+iPhone generation table, select a benchmark outcome, or promote the Apple
+adapter. Signing and device-build configuration is readiness, not generation
+evidence.
 
 ## Pre-measurement amendment
 
@@ -383,8 +397,11 @@ and deterministic-fixture controls. They do not establish manual VoiceOver,
 accessibility text-size, Reduce Motion, focus, or long-running generation
 behavior.
 
-Before this packet closes, physical-device or simulator manual evidence must
-confirm:
+If the owner resumes this packet, physical-device or simulator manual evidence
+must confirm the interface requirements below in addition to the physical-
+iPhone generation measurements. Packet 008 evidence may be referenced for
+shared UI behavior but cannot substitute for a measured long-running device
+request:
 
 - concise VoiceOver announcements for availability, generating, cancelled,
   rejected, and fallback states;
@@ -430,7 +447,8 @@ and the measurement harness now represents the frozen schedule and request-size
 method. The declared iPhone accepts and launches the development-signed app.
 Hardware, OS, locale/region, power/battery, and starting thermal evidence is
 recorded, and Foundation Models is available for that configuration. The
-complete generation benchmark remains unmeasured. No product or architecture
-decision has been selected. The provider proposal remains **Proposed**, this
-packet remains **In Progress**, and the complete v2 physical-iPhone measurement
-remains pending.
+complete generation benchmark remains unmeasured. No benchmark outcome has
+been selected. ADR-005 accepts the app-owned boundary, deterministic fallback,
+and an explicitly experimental provider policy only. This packet is **Deferred
+by owner**, and the complete v2 physical-iPhone measurement remains pending if
+provider promotion is reconsidered.

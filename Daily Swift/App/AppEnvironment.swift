@@ -29,6 +29,17 @@ struct AppLaunchConfiguration: Equatable, Sendable {
         case restoreRetry = "restore-retry"
     }
 
+    enum GeneratedLearningScenario: String, Equatable, Sendable {
+        case valid
+        case unavailable
+        case rejected
+        case delayed
+        case finalizing
+        case providerFailure = "provider-failure"
+        case storageRetry = "storage-retry"
+        case persistent
+    }
+
     static let uiTestingFlag = "--ui-testing"
     static let structuredGenerationSpikeFlag =
         "--open-structured-generation-spike"
@@ -41,6 +52,10 @@ struct AppLaunchConfiguration: Equatable, Sendable {
         "--reset-ui-testing-learning-progress"
     static let sourceScenarioArgument =
         "--source-library-scenario"
+    static let generatedLearningScenarioArgument =
+        "--generated-learning-scenario"
+    static let resetUITestingGeneratedLearningFlag =
+        "--reset-ui-testing-generated-learning"
     static let uiTestingSnapshotKey =
         "app-shell.ui-testing.snapshot"
 
@@ -51,6 +66,8 @@ struct AppLaunchConfiguration: Equatable, Sendable {
     let shellScenario: ShellScenario
     let learningScenario: LearningScenario
     let sourceScenario: SourceScenario
+    let generatedLearningScenario: GeneratedLearningScenario
+    let shouldResetUITestingGeneratedLearning: Bool
 
     init(processInfo: ProcessInfo = .processInfo) {
         self.init(arguments: processInfo.arguments)
@@ -67,11 +84,17 @@ struct AppLaunchConfiguration: Equatable, Sendable {
         shouldResetUITestingLearning = arguments.contains(
             Self.resetUITestingLearningFlag
         )
+        shouldResetUITestingGeneratedLearning = arguments.contains(
+            Self.resetUITestingGeneratedLearningFlag
+        )
         shellScenario = Self.parseShellScenario(from: arguments)
         learningScenario = Self.parseLearningScenario(from: arguments)
             ?? (isUITestingEnabled ? .empty : .live)
         sourceScenario = Self.parseSourceScenario(from: arguments)
             ?? (isUITestingEnabled ? .empty : .live)
+        generatedLearningScenario = Self.parseGeneratedLearningScenario(
+            from: arguments
+        ) ?? .valid
     }
 
     private static func parseShellScenario(
@@ -142,6 +165,31 @@ struct AppLaunchConfiguration: Equatable, Sendable {
 
         return nil
     }
+
+    private static func parseGeneratedLearningScenario(
+        from arguments: [String]
+    ) -> GeneratedLearningScenario? {
+        let valuePrefix = "\(generatedLearningScenarioArgument)="
+        if let argument = arguments.first(where: {
+            $0.hasPrefix(valuePrefix)
+        }) {
+            let rawValue = String(argument.dropFirst(valuePrefix.count))
+            return GeneratedLearningScenario(rawValue: rawValue)
+        }
+
+        if let argumentIndex = arguments.firstIndex(
+            of: generatedLearningScenarioArgument
+        ) {
+            let valueIndex = arguments.index(after: argumentIndex)
+            if arguments.indices.contains(valueIndex) {
+                return GeneratedLearningScenario(
+                    rawValue: arguments[valueIndex]
+                )
+            }
+        }
+
+        return nil
+    }
 }
 
 @MainActor
@@ -153,6 +201,7 @@ struct AppEnvironment {
     let learningCatalog: LearningCatalog
     let sourceLibraryService: any SourceLibraryServing
     let sourceRetriever: any SourceRetrieving
+    let generatedLearningGenerator: any GeneratedLearningGenerating
     let launchConfiguration: AppLaunchConfiguration
 
     init(
@@ -165,6 +214,7 @@ struct AppEnvironment {
         sourceLibraryService: any SourceLibraryServing =
             InMemorySourceLibraryService(),
         sourceRetriever: (any SourceRetrieving)? = nil,
+        generatedLearningGenerator: (any GeneratedLearningGenerating)? = nil,
         launchConfiguration: AppLaunchConfiguration = AppLaunchConfiguration(
             arguments: []
         )
@@ -175,10 +225,78 @@ struct AppEnvironment {
         self.learningRouter = learningRouter
         self.learningCatalog = learningCatalog
         self.sourceLibraryService = sourceLibraryService
-        self.sourceRetriever = sourceRetriever
+        let resolvedSourceRetriever = sourceRetriever
             ?? DirectScanSourceRetriever(
                 sourceLibrary: sourceLibraryService
             )
+        self.sourceRetriever = resolvedSourceRetriever
+        if let generatedLearningGenerator {
+            self.generatedLearningGenerator = generatedLearningGenerator
+        } else {
+            let provider: any LanguageModelProvider
+            let store: any GeneratedLearningStoring
+#if DEBUG
+            if launchConfiguration.isUITestingEnabled {
+                switch launchConfiguration.generatedLearningScenario {
+                case .valid:
+                    provider = DeterministicLanguageModelProvider()
+                    store = InMemoryGeneratedLearningStore()
+                case .unavailable:
+                    provider = DeterministicLanguageModelProvider(
+                        availability: .unavailable(.modelNotReady)
+                    )
+                    store = InMemoryGeneratedLearningStore()
+                case .rejected:
+                    provider = DeterministicLanguageModelProvider(
+                        mode: .uncited
+                    )
+                    store = InMemoryGeneratedLearningStore()
+                case .delayed:
+                    provider =
+                        DeterministicCancellationDrainLanguageModelProvider()
+                    store = InMemoryGeneratedLearningStore()
+                case .finalizing:
+                    provider = DeterministicLanguageModelProvider()
+                    store = DelayedSaveGeneratedLearningStore(
+                        base: InMemoryGeneratedLearningStore(),
+                        delay: .seconds(2)
+                    )
+                case .providerFailure:
+                    provider = DeterministicLanguageModelProvider(
+                        mode: .failure(.requestFailed)
+                    )
+                    store = InMemoryGeneratedLearningStore()
+                case .storageRetry:
+                    provider = DeterministicLanguageModelProvider()
+                    store = InMemoryGeneratedLearningStore(
+                        restoreOutcomes: [
+                            .failure(.readFailed),
+                            .success(()),
+                        ]
+                    )
+                case .persistent:
+                    provider = DeterministicLanguageModelProvider()
+                    store = GeneratedLearningStoreFactory.uiTesting(
+                        reset:
+                            launchConfiguration
+                                .shouldResetUITestingGeneratedLearning
+                    )
+                }
+            } else {
+                provider = AppleFoundationModelProvider()
+                store = GeneratedLearningStoreFactory.live()
+            }
+#else
+            provider = AppleFoundationModelProvider()
+            store = GeneratedLearningStoreFactory.live()
+#endif
+            self.generatedLearningGenerator = GeneratedLearningGenerator(
+                retriever: resolvedSourceRetriever,
+                sourceLibrary: sourceLibraryService,
+                provider: provider,
+                store: store
+            )
+        }
         self.launchConfiguration = launchConfiguration
     }
 
@@ -252,11 +370,21 @@ struct AppEnvironment {
     }
 
     func makeSourceLibraryViewModel() -> SourceLibraryViewModel {
-        SourceLibraryViewModel(service: sourceLibraryService)
+        SourceLibraryViewModel(
+            service: sourceLibraryService,
+            sourceDeleter: CascadingLearningSourceDeleter(
+                sourceLibrary: sourceLibraryService,
+                generatedLearning: generatedLearningGenerator
+            )
+        )
     }
 
     func makeSourceRetrievalViewModel() -> SourceRetrievalViewModel {
         SourceRetrievalViewModel(retriever: sourceRetriever)
+    }
+
+    func makeGeneratedLearningViewModel() -> GeneratedLearningViewModel {
+        GeneratedLearningViewModel(generator: generatedLearningGenerator)
     }
 
     private static func learningProgressStore(

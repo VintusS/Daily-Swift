@@ -17,7 +17,10 @@ struct ChallengesView: View {
 
     let catalog: LearningCatalog
     let evidence: LearningEvidenceSummary
+    let snapshot: LearningProgressSnapshot
+    let generatedArtifacts: [GeneratedLearningArtifact]
     let onOpenChallenge: (String) -> Void
+    let onOpenGeneratedQuiz: (UUID) -> Void
 
     @State private var filter: Filter = .all
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -35,6 +38,20 @@ struct ChallengesView: View {
         }
     }
 
+    private var visibleGeneratedArtifacts: [GeneratedLearningArtifact] {
+        generatedArtifacts.filter { artifact in
+            let isComplete = hasSavedAnswerKeyMatch(for: artifact)
+            return switch filter {
+            case .all:
+                true
+            case .incomplete:
+                !isComplete
+            case .completed:
+                isComplete
+            }
+        }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             filterControl
@@ -44,7 +61,8 @@ struct ChallengesView: View {
                 .accessibilityIdentifier("challenges.filter")
 
             Group {
-                if visibleChallenges.isEmpty {
+                if visibleChallenges.isEmpty
+                    && visibleGeneratedArtifacts.isEmpty {
                     ContentUnavailableView(
                         "No \(filter.title.lowercased()) challenges",
                         systemImage: "checkmark.seal",
@@ -56,31 +74,63 @@ struct ChallengesView: View {
                     )
                 } else {
                     List {
-                        Section {
-                            ForEach(visibleChallenges) { challenge in
-                                Button {
-                                    onOpenChallenge(challenge.id)
-                                } label: {
-                                    ChallengeCatalogRow(
-                                        challenge: challenge,
-                                        isComplete: evidence
-                                            .completedChallengeIDs
-                                            .contains(challenge.id)
+                        if !visibleGeneratedArtifacts.isEmpty {
+                            Section {
+                                ForEach(
+                                    visibleGeneratedArtifacts
+                                ) { artifact in
+                                    Button {
+                                        onOpenGeneratedQuiz(artifact.id)
+                                    } label: {
+                                        GeneratedQuizHistoryRow(
+                                            artifact: artifact,
+                                            hasAnswerKeyMatch:
+                                                hasSavedAnswerKeyMatch(
+                                                    for: artifact
+                                                )
+                                        )
+                                    }
+                                    .buttonStyle(.plain)
+                                    .accessibilityIdentifier(
+                                        "generated-quiz.open.\(artifact.id.uuidString.lowercased())"
                                     )
                                 }
-                                .buttonStyle(.plain)
-                                .accessibilityIdentifier(
-                                    "challenges.open.\(challenge.id)"
+                            } header: {
+                                Text("Generated quizzes")
+                            } footer: {
+                                Text(
+                                    "Answer-key matches are recorded as activity only. Generated quizzes are experimental and never update mastery."
                                 )
                             }
-                        } header: {
-                            Text(
-                                "\(visibleChallenges.count) deterministic challenges"
-                            )
-                        } footer: {
-                            Text(
-                                "Feedback is checked against bundled answer keys. No model or network is used."
-                            )
+                        }
+
+                        if !visibleChallenges.isEmpty {
+                            Section {
+                                ForEach(visibleChallenges) { challenge in
+                                    Button {
+                                        onOpenChallenge(challenge.id)
+                                    } label: {
+                                        ChallengeCatalogRow(
+                                            challenge: challenge,
+                                            isComplete: evidence
+                                                .completedChallengeIDs
+                                                .contains(challenge.id)
+                                        )
+                                    }
+                                    .buttonStyle(.plain)
+                                    .accessibilityIdentifier(
+                                        "challenges.open.\(challenge.id)"
+                                    )
+                                }
+                            } header: {
+                                Text(
+                                    "\(visibleChallenges.count) deterministic challenges"
+                                )
+                            } footer: {
+                                Text(
+                                    "Feedback is checked against bundled answer keys. No model or network is used."
+                                )
+                            }
                         }
                     }
                     .listStyle(.insetGrouped)
@@ -89,6 +139,16 @@ struct ChallengesView: View {
         }
         .navigationTitle("Challenges")
         .accessibilityIdentifier("challenges.screen")
+    }
+
+    private func hasSavedAnswerKeyMatch(
+        for artifact: GeneratedLearningArtifact
+    ) -> Bool {
+        snapshot.attempts.contains {
+            $0.challengeID == artifact.quizID
+                && $0.selectedChoiceID
+                    == artifact.quiz.answerKeyChoiceID
+        }
     }
 
     @ViewBuilder

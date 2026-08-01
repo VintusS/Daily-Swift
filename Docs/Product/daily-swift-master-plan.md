@@ -132,13 +132,15 @@ The app intentionally excludes teaching macOS, watchOS, tvOS, and visionOS as se
 
 ## 4.1 On-device AI
 
-The first implementation should use Apple’s Foundation Models framework through a provider abstraction.
+The preferred on-device implementation uses Apple’s Foundation Models framework
+through an app-owned provider abstraction. It remains experimental until the
+provider-promotion evidence below is accepted.
 
 ### Provider design
 
 ```text
 LanguageModelProvider
-├── AppleFoundationModelProvider   // MVP and default
+├── AppleFoundationModelProvider   // experimental; preferred future default
 ├── CoreMLModelProvider            // future downloadable specialist models
 └── CloudModelProvider             // future, explicit opt-in
 ```
@@ -151,13 +153,52 @@ The app must check model availability at runtime and handle:
 - language or region restrictions;
 - model-version changes after OS updates.
 
-### MVP policy
+### Target MVP policy after provider promotion
 
-- Apple’s system model is the only implemented provider.
+The target policy below does not apply while the owner-directed experimental
+exception remains active. Until promotion, that narrower exception and the
+accepted architecture records control generation behavior.
+
+- Apple’s system model is the only implemented model-backed provider.
 - The architecture supports multiple providers without exposing unfinished choices.
 - Generated lessons are cached per learner and prompt version.
 - Generation may happen on demand or ahead of time.
 - Larger batches should be scheduled opportunistically while charging and when thermal state is acceptable.
+
+### Owner-directed experimental sequencing exception
+
+On 2026-08-01, the owner deferred the Packet 000-A physical generation
+benchmark and authorized a narrow production generated-learning slice. The
+exception does not claim that any quality, latency, context, cancellation,
+memory, energy, thermal, or accessibility threshold passed.
+
+Until the benchmark is completed, Foundation Models remains an experimental,
+unpromoted adapter behind the app-owned provider boundary. Generation is
+foreground-only, learner-initiated, serial, cancellable, and limited to four
+exactly cited source cards. Reviewed deterministic content remains the default
+fallback. Generated private-source quizzes are experimental activity and do
+not update mastery. Automatic/background batches remain prohibited.
+
+This exception permits production boundary, grounding, validation, local
+history, and accessible generated-learning UI work. It does not authorize web
+crawling, third-party content bundling, redistribution, or use of private source
+text outside the accepted local-only rights boundary.
+
+The experimental slice stores versioned history rather than performing cache
+lookup or silent reuse. Cache deduplication, quotas, learner-facing storage
+controls, and automatic eviction require a later accepted policy. Generated
+answer-key matches remain experimental activity rather than verified
+correctness. Deleting or rolling back generated presentation artifacts may
+retain source-free activity identifiers, flags, and timestamps under ADR-011;
+they never update mastery.
+
+The model is instructed to use original wording and avoid extended quotation,
+but that instruction is not proof of originality. The private presentation gate
+also rejects 16 or more consecutive normalized words copied from any supplied
+source card. That conservative limit is not proof of broader copyright
+compliance. Experimental private artifacts are not authorized for sharing,
+redistribution, or export; those capabilities require a separate rights
+decision and stronger policy.
 
 ### Context limitation
 
@@ -167,7 +208,8 @@ The model context is too small to ingest complete books directly in one prompt. 
 2. build compact source cards;
 3. generate one lesson or exercise set;
 4. validate the output;
-5. cache the result.
+5. store the accepted result under the current identity policy; use it as a
+   cache only after cache lookup and invalidation are separately accepted.
 
 ## 4.2 True Swift compilation on iPhone
 

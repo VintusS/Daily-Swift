@@ -148,6 +148,73 @@ struct LearningStudioViewModelTests {
         #expect(viewModel.isChallengeComplete(challenge.id))
     }
 
+    @Test("Generated completion is saved as activity but excluded from mastery")
+    func generatedActivityDoesNotChangeMastery() async {
+        let request = GeneratedLearningTestFixtures.request()
+        let artifact = GeneratedLearningTestFixtures.artifact(
+            request: request,
+            candidate: GeneratedLearningTestFixtures.candidate(
+                citationReferenceIDs: [request.sourceCards[0].id]
+            )
+        )
+        let store = InMemoryLearningProgressStore()
+        let viewModel = makeViewModel(store: store)
+        viewModel.load()
+        await viewModel.waitForCurrentOperation()
+
+        _ = viewModel.submitGeneratedAnswer(
+            artifact: artifact,
+            selectedChoiceID: artifact.quiz.answerKeyChoiceID
+        )
+        await viewModel.waitForCurrentOperation()
+        viewModel.markGeneratedArticleRead(
+            artifact.articleID,
+            isRead: true
+        )
+        await viewModel.waitForCurrentOperation()
+
+        let stored = await store.currentSnapshot()
+        #expect(stored.attempts.count == 1)
+        #expect(stored.attempts[0].challengeID == artifact.quizID)
+        #expect(!stored.attempts[0].isCorrect)
+        #expect(
+            stored.attempts[0].selectedChoiceID
+                == artifact.quiz.answerKeyChoiceID
+        )
+        #expect(
+            stored.activity(for: artifact.articleID).completedAt
+                == fixedDate
+        )
+        #expect(viewModel.evidence.totalAttempts == 0)
+        #expect(viewModel.evidence.correctAttempts == 0)
+        #expect(
+            !viewModel.evidence.completedChallengeIDs
+                .contains(artifact.quizID)
+        )
+        #expect(
+            !viewModel.evidence.readArticleIDs
+                .contains(artifact.articleID)
+        )
+
+        let restoredViewModel = makeViewModel(store: store)
+        restoredViewModel.load()
+        await restoredViewModel.waitForCurrentOperation()
+
+        #expect(restoredViewModel.snapshot.attempts.count == 1)
+        #expect(
+            restoredViewModel.snapshot.attempts[0].selectedChoiceID
+                == artifact.quiz.answerKeyChoiceID
+        )
+        #expect(!restoredViewModel.snapshot.attempts[0].isCorrect)
+        #expect(
+            restoredViewModel.snapshot
+                .activity(for: artifact.articleID).completedAt
+                == fixedDate
+        )
+        #expect(restoredViewModel.evidence.totalAttempts == 0)
+        #expect(restoredViewModel.evidence.correctAttempts == 0)
+    }
+
     @Test("Retry reuses a failed attempt instead of duplicating it")
     func attemptRetryIsIdempotent() async {
         let store = InMemoryLearningProgressStore(

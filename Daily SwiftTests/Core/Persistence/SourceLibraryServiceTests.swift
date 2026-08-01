@@ -364,6 +364,85 @@ struct SourceLibraryServiceTests {
         )
     }
 
+    @Test("Restore rolls back interrupted deletion when metadata remains")
+    func interruptedDeletionRestoresFilesForRetainedMetadata() async throws {
+        let fixture = try makeFixture()
+        defer {
+            try? FileManager.default.removeItem(at: fixture.temporaryRoot)
+        }
+        let sourceURL = fixture.temporaryRoot
+            .appendingPathComponent("interrupted-delete.txt")
+        try Data("Private retained passage.".utf8).write(to: sourceURL)
+        let imported = try await fixture.service.importSource(
+            request(for: sourceURL)
+        )
+        let citation = try #require(
+            try await fixture.service.restore().chunks.first?.citation
+        )
+        let liveDirectory = fixture.sourceRoot.appendingPathComponent(
+            imported.id.uuidString.lowercased(),
+            isDirectory: true
+        )
+        let stagedDirectory = fixture.sourceRoot.appendingPathComponent(
+            ".deleting-\(imported.id.uuidString.lowercased())",
+            isDirectory: true
+        )
+        try FileManager.default.moveItem(
+            at: liveDirectory,
+            to: stagedDirectory
+        )
+
+        let restored = try await fixture.service.restore()
+
+        #expect(restored.documents == [imported])
+        #expect(FileManager.default.fileExists(atPath: liveDirectory.path))
+        #expect(
+            !FileManager.default.fileExists(atPath: stagedDirectory.path)
+        )
+        #expect(
+            try await fixture.service.resolve(citation).excerpt
+                == "Private retained passage."
+        )
+    }
+
+    @Test("Restore finishes interrupted deletion after metadata commit")
+    func interruptedDeletionRemovesStagedFilesWithoutMetadata() async throws {
+        let fixture = try makeFixture()
+        defer {
+            try? FileManager.default.removeItem(at: fixture.temporaryRoot)
+        }
+        let sourceURL = fixture.temporaryRoot
+            .appendingPathComponent("committed-delete.txt")
+        try Data("Private deleted passage.".utf8).write(to: sourceURL)
+        let imported = try await fixture.service.importSource(
+            request(for: sourceURL)
+        )
+        let liveDirectory = fixture.sourceRoot.appendingPathComponent(
+            imported.id.uuidString.lowercased(),
+            isDirectory: true
+        )
+        let stagedDirectory = fixture.sourceRoot.appendingPathComponent(
+            ".deleting-\(imported.id.uuidString.lowercased())",
+            isDirectory: true
+        )
+        try FileManager.default.moveItem(
+            at: liveDirectory,
+            to: stagedDirectory
+        )
+        let metadataStore = SwiftDataSourceLibraryMetadataStore(
+            modelContainer: fixture.container
+        )
+        try await metadataStore.delete(sourceID: imported.id)
+
+        #expect(try await fixture.service.restore() == .empty)
+        #expect(
+            !FileManager.default.fileExists(atPath: stagedDirectory.path)
+        )
+        #expect(
+            !FileManager.default.fileExists(atPath: liveDirectory.path)
+        )
+    }
+
     @Test("Equivalent normalized content is rejected as a duplicate")
     func duplicateDetection() async throws {
         let fixture = try makeFixture()

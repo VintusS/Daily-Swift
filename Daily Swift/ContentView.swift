@@ -13,6 +13,7 @@ struct ContentView: View {
     private let learningStudioViewModel: LearningStudioViewModel
     private let sourceLibraryViewModel: SourceLibraryViewModel
     private let sourceRetrievalViewModel: SourceRetrievalViewModel
+    private let generatedLearningViewModel: GeneratedLearningViewModel
     private let launchConfiguration: AppLaunchConfiguration
 
     init(environment: AppEnvironment = .live()) {
@@ -24,6 +25,8 @@ struct ContentView: View {
                 environment.makeSourceLibraryViewModel(),
             sourceRetrievalViewModel:
                 environment.makeSourceRetrievalViewModel(),
+            generatedLearningViewModel:
+                environment.makeGeneratedLearningViewModel(),
             launchConfiguration: environment.launchConfiguration
         )
     }
@@ -33,12 +36,14 @@ struct ContentView: View {
         learningStudioViewModel: LearningStudioViewModel,
         sourceLibraryViewModel: SourceLibraryViewModel,
         sourceRetrievalViewModel: SourceRetrievalViewModel,
+        generatedLearningViewModel: GeneratedLearningViewModel,
         launchConfiguration: AppLaunchConfiguration
     ) {
         self.rootViewModel = rootViewModel
         self.learningStudioViewModel = learningStudioViewModel
         self.sourceLibraryViewModel = sourceLibraryViewModel
         self.sourceRetrievalViewModel = sourceRetrievalViewModel
+        self.generatedLearningViewModel = generatedLearningViewModel
         self.launchConfiguration = launchConfiguration
     }
 
@@ -51,7 +56,8 @@ struct ContentView: View {
                 viewModel: rootViewModel,
                 learningStudioViewModel: learningStudioViewModel,
                 sourceLibraryViewModel: sourceLibraryViewModel,
-                sourceRetrievalViewModel: sourceRetrievalViewModel
+                sourceRetrievalViewModel: sourceRetrievalViewModel,
+                generatedLearningViewModel: generatedLearningViewModel
             )
         }
 #else
@@ -59,7 +65,8 @@ struct ContentView: View {
             viewModel: rootViewModel,
             learningStudioViewModel: learningStudioViewModel,
             sourceLibraryViewModel: sourceLibraryViewModel,
-            sourceRetrievalViewModel: sourceRetrievalViewModel
+            sourceRetrievalViewModel: sourceRetrievalViewModel,
+            generatedLearningViewModel: generatedLearningViewModel
         )
 #endif
     }

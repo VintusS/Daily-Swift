@@ -120,9 +120,11 @@ struct AppRouteAndSnapshotTests {
                 "--ui-testing",
                 "--reset-ui-testing-app-shell",
                 "--reset-ui-testing-learning-progress",
+                "--reset-ui-testing-generated-learning",
                 "--app-shell-scenario=restoration-corrupt",
                 "--learning-studio-scenario=write-retry",
                 "--source-library-scenario=seeded",
+                "--generated-learning-scenario=rejected",
                 "--open-structured-generation-spike",
             ]
         )
@@ -131,9 +133,11 @@ struct AppRouteAndSnapshotTests {
         #expect(configuration.isStructuredGenerationSpikeEnabled)
         #expect(configuration.shouldResetUITestingShell)
         #expect(configuration.shouldResetUITestingLearning)
+        #expect(configuration.shouldResetUITestingGeneratedLearning)
         #expect(configuration.shellScenario == .restorationCorrupt)
         #expect(configuration.learningScenario == .writeRetry)
         #expect(configuration.sourceScenario == .seeded)
+        #expect(configuration.generatedLearningScenario == .rejected)
     }
 
     @Test("UI testing defaults to isolated in-memory learning progress")
@@ -144,7 +148,22 @@ struct AppRouteAndSnapshotTests {
 
         #expect(configuration.learningScenario == .empty)
         #expect(configuration.sourceScenario == .empty)
+        #expect(configuration.generatedLearningScenario == .valid)
         #expect(!configuration.shouldResetUITestingLearning)
+        #expect(!configuration.shouldResetUITestingGeneratedLearning)
+    }
+
+    @Test("Generated finalization scenario parses deterministically")
+    func generatedFinalizationScenarioParses() {
+        let configuration = AppLaunchConfiguration(
+            arguments: [
+                "DailySwift",
+                "--ui-testing",
+                "--generated-learning-scenario=finalizing",
+            ]
+        )
+
+        #expect(configuration.generatedLearningScenario == .finalizing)
     }
 
     private func makeDefaultsFixture() -> (

@@ -2,6 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-07-28
+**Last amended:** 2026-08-01
 **Owners:** Project maintainers
 
 ## Context
@@ -41,9 +42,15 @@ instructions, assign citation identities in the application, expose no
 mutation/network/execution tool through source text, validate every citation,
 and abstain when evidence is insufficient.
 
-Deletion removes the private source and its derived local data. Future export,
-sync, sharing, and cloud processing require separate, explicit decisions and
-user consent.
+Deletion removes the private source, normalized text, chunks, citations, and
+generated presentation artifacts that reference it. ADR-011's append-only
+learning-activity exception may retain only app-owned generated content IDs,
+selected choice IDs, bookmark/read flags, and timestamps already
+written to the learning-progress store. Those records contain no source text,
+title, citation, generated body, or prompt; unavailable generated IDs do not
+contribute to mastery or deterministic correctness. Future export, sync,
+sharing, cloud processing, or erasure of that append-only evidence requires a
+separate, explicit decision and user consent.
 
 ## Alternatives considered
 
@@ -84,7 +91,10 @@ without inventing them.
   local-only state.
 - Inspect logs, UI fixtures, tests, and screenshots for private source text or
   paths.
-- Verify deletion removes the original, normalized text, chunks, and metadata.
+- Verify deletion removes the original, normalized text, chunks, metadata,
+  citations, and every generated presentation artifact that references the
+  source, while any retained activity evidence is source-free and excluded from
+  mastery and deterministic correctness.
 
 ## Supersession
 

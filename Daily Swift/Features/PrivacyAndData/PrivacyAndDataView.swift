@@ -57,12 +57,12 @@ struct PrivacyAndDataView: View {
                         PrivacyCommitment(
                             symbol: "doc.text.magnifyingglass",
                             title: "Sources",
-                            detail: "Imported documents remain on device by default. Private material is never treated as redistributable content."
+                            detail: "Imported documents remain on device. Deleting a source also removes generated article and quiz bodies that cite it. Source-free activity IDs, selected choices, and read or bookmark timestamps may remain locally, never affect mastery, and are covered by complete-deletion work."
                         )
                         PrivacyCommitment(
                             symbol: "sparkles.rectangle.stack",
                             title: "Generation",
-                            detail: "On-device generation stays optional. Unavailable or rejected output never blocks deterministic learning."
+                            detail: "A foreground request sends up to four exact imported passages to Apple’s on-device system model. Accepted articles and quizzes are stored in Application Support; prompt bodies and source excerpts are not added to generated-history files."
                         )
                         PrivacyCommitment(
                             symbol: "icloud.slash",
