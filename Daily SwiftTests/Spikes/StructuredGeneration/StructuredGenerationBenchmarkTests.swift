@@ -3,6 +3,34 @@ import Testing
 @testable import DailySwift
 
 struct StructuredGenerationBenchmarkTests {
+    @Test("Environment evidence uses stable availability categories")
+    func environmentAvailabilityCategoriesAreStable() {
+        let expectations: [
+            (StructuredGenerationAvailability, String)
+        ] = [
+            (.available, "available"),
+            (.unavailable(.deviceNotSupported), "device-not-supported"),
+            (
+                .unavailable(.intelligenceDisabled),
+                "apple-intelligence-disabled"
+            ),
+            (.unavailable(.modelNotReady), "model-not-ready"),
+            (
+                .unavailable(.languageOrRegionUnsupported),
+                "locale-or-region-unsupported"
+            ),
+            (.unavailable(.other), "other-unavailable"),
+        ]
+
+        for (availability, expectedLabel) in expectations {
+            #expect(
+                StructuredGenerationEvidenceReporter.label(
+                    for: availability
+                ) == expectedLabel
+            )
+        }
+    }
+
     @Test("The source-card manifest is frozen")
     func sourceCardManifestIsFrozen() {
         #expect(

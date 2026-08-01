@@ -219,12 +219,20 @@ VM Tracker for memory. Selecting the invalid gate fixture routes its invalid and
 uncited artifact through the same view model, deterministic validator, and
 presentation gate; rejected values remain absent from diagnostics.
 
-A development-signed Debug build compiled with Xcode 26.5 and installed
-successfully on the declared iPhone Air on 2026-07-30 through CoreDevice. The
-phone was locked when the first launch was attempted, so installation proves
-only build/sign/install compatibility. It does not prove app launch, model
-availability, generation quality, accessibility, latency, memory, power, or
-thermal behavior.
+A development-signed Debug build compiled with Xcode 26.5, installed
+successfully on the declared iPhone Air through CoreDevice, and launched the
+Packet 000-A screen on 2026-07-30. A Debug-only explicit launch argument can
+print the same approved environment fields plus the mapped Foundation Models
+availability category to the attached development console. It never prints
+prompts, sources, generated artifacts, or learner data.
+
+LLDB inspection of the running app recorded the OS build, locale/region,
+power/battery, and starting thermal category below. Xcode 26.5 could not import
+the iOS 27 beta Foundation Models module in the debugger. The explicit
+non-activating console report then mapped `SystemLanguageModel.default` and the
+current locale to application value `.available`. Launch and availability
+readiness do not prove generation quality, accessibility, latency, memory, or
+sustained thermal behavior.
 
 ### Physical-iPhone evidence
 
@@ -255,10 +263,10 @@ run.
 | Prompt version | `structured-generation-v2` |
 | Physical iPhone model | iPhone Air (`iPhone18,4`), identified by CoreDevice; benchmark not run |
 | Device OS version and build | iOS 27.0 beta (`24A5390f`); benchmark not run |
-| Locale and region | Not measured |
-| Apple Intelligence state | Not measured |
-| Power state | Not measured |
-| Starting thermal state | Not measured |
+| Locale and region | `en_US@rg=mdzzzz`; region `MD` (Moldova) |
+| Apple Intelligence state | Ready for the current configuration: `SystemLanguageModel.default` and locale map to `.available` |
+| Power state | On battery, 55% |
+| Starting thermal state | Nominal before warm-up |
 
 ## Measurement procedure
 
@@ -351,7 +359,7 @@ diagnostics.
 | Subsequent request after cancellation | Not measured | Pending |
 | Memory termination | Not measured | Pending |
 | Worst thermal state | Not measured | Pending |
-| Target-device availability | Not measured | Pending |
+| Target-device availability | Available | Meets the availability go condition only |
 | Proposed outcome | Not selected | Physical-iPhone evidence required |
 
 ## Deterministic fallback
@@ -419,8 +427,10 @@ confirm:
 
 The isolated debug implementation uses the v2 deterministic identity boundary,
 and the measurement harness now represents the frozen schedule and request-size
-method. The declared iPhone can accept the development-signed app, but no launch
-or benchmark result has been recorded. No product or architecture decision has
-been selected. The provider proposal remains **Proposed**, this packet remains
-**In Progress**, and the complete v2 physical-iPhone measurement remains
-pending.
+method. The declared iPhone accepts and launches the development-signed app.
+Hardware, OS, locale/region, power/battery, and starting thermal evidence is
+recorded, and Foundation Models is available for that configuration. The
+complete generation benchmark remains unmeasured. No product or architecture
+decision has been selected. The provider proposal remains **Proposed**, this
+packet remains **In Progress**, and the complete v2 physical-iPhone measurement
+remains pending.

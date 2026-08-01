@@ -243,9 +243,12 @@ predeclared warm-up and 30-run schedule, request-size components, privacy-safe
 device environment, deterministic fallback, and intentionally invalid
 presentation-gate fixture. Signing-independent Debug and Release builds and
 Debug `build-for-testing` pass. A development-signed build installed on an
-iPhone Air (`iPhone18,4`) running iOS 27.0 beta (`24A5390f`), but the initial
-launch was blocked by the locked phone. These are readiness facts, not
-Foundation Models acceptance evidence.
+iPhone Air (`iPhone18,4`) running iOS 27.0 beta (`24A5390f`) and later launched
+the Packet 000-A screen. The device environment records `en_US` with Moldova
+region, 55% battery, and nominal thermal state before warm-up. The explicit
+environment report maps the default system model and current locale to
+`.available`. The measured generation benchmark remains pending. These are
+readiness facts, not Foundation Models acceptance evidence.
 
 ## Residual risks
 
