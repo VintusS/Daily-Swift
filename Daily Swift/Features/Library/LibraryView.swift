@@ -254,7 +254,19 @@ struct LibraryView: View {
                             )
                         }
                     } header: {
-                        Text("Generated articles")
+                        HStack {
+                            Text("Generated articles")
+                            Spacer()
+                            Text("\(visibleGeneratedArtifacts.count)")
+                        }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("Generated articles")
+                        .accessibilityValue(
+                            "\(visibleGeneratedArtifacts.count)"
+                        )
+                        .accessibilityIdentifier(
+                            "generated-articles.count"
+                        )
                     } footer: {
                         Text(
                             "These private artifacts passed structural and exact-citation checks, not independent factual verification."

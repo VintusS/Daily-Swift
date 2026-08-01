@@ -623,10 +623,9 @@ final class DailySwiftUITests: XCTestCase {
             "generated-learning.open-article"
         ]
         XCTAssertTrue(
-            openArticle.waitForExistence(timeout: 5),
+            scrollToHittable(openArticle, in: app),
             "The deterministic UI-testing provider should save a cited article and quiz."
         )
-        XCTAssertTrue(scrollToHittable(openArticle, in: app))
         openArticle.tap()
 
         XCTAssertTrue(
@@ -807,12 +806,10 @@ final class DailySwiftUITests: XCTestCase {
         XCTAssertTrue(openComposer.waitForExistence(timeout: 5))
         openComposer.tap()
 
-        XCTAssertTrue(
-            app.descendants(matching: .any)[
-                "generated-learning.no-sources"
-            ]
-            .waitForExistence(timeout: 5)
-        )
+        let noSources = app.descendants(matching: .any)[
+            "generated-learning.no-sources"
+        ]
+        XCTAssertTrue(scrollToExistence(noSources, in: app))
         let screenshot = XCTAttachment(screenshot: app.screenshot())
         screenshot.name =
             "Generated learning no-source fallback accessibility XXXL"
@@ -913,11 +910,10 @@ final class DailySwiftUITests: XCTestCase {
         XCTAssertTrue(waitForEnabled(generate))
         generate.tap()
 
-        XCTAssertTrue(
-            app.descendants(matching: .any)[
-                "generated-learning.status.generated"
-            ].waitForExistence(timeout: 5)
-        )
+        let firstGenerated = app.descendants(matching: .any)[
+            "generated-learning.status.generated"
+        ]
+        XCTAssertTrue(scrollToExistence(firstGenerated, in: app))
         for _ in 0..<6 where !generate.isHittable {
             app.swipeDown()
         }
@@ -925,11 +921,10 @@ final class DailySwiftUITests: XCTestCase {
         XCTAssertTrue(waitForEnabled(generate))
         generate.tap()
         XCTAssertTrue(waitForEnabled(generate))
-        XCTAssertTrue(
-            app.descendants(matching: .any)[
-                "generated-learning.status.generated"
-            ].waitForExistence(timeout: 5)
-        )
+        let secondGenerated = app.descendants(matching: .any)[
+            "generated-learning.status.generated"
+        ]
+        XCTAssertTrue(scrollToExistence(secondGenerated, in: app))
 
         returnToNavigationRoot("Library", in: app)
         let generatedRows = app.buttons.matching(
@@ -941,7 +936,13 @@ final class DailySwiftUITests: XCTestCase {
         XCTAssertTrue(
             scrollToExistence(generatedRows.firstMatch, in: app)
         )
-        XCTAssertEqual(generatedRows.count, 2)
+        let generatedArticleCount = app.descendants(matching: .any)[
+            "generated-articles.count"
+        ]
+        XCTAssertTrue(
+            scrollToExistence(generatedArticleCount, in: app)
+        )
+        XCTAssertEqual(generatedArticleCount.value as? String, "2")
 
         app.tabBars.buttons["Challenges"].tap()
         let quizRows = app.buttons.matching(
@@ -951,7 +952,11 @@ final class DailySwiftUITests: XCTestCase {
             )
         )
         XCTAssertTrue(scrollToHittable(quizRows.firstMatch, in: app))
-        XCTAssertEqual(quizRows.count, 2)
+        let generatedQuizCount = app.descendants(matching: .any)[
+            "generated-quizzes.count"
+        ]
+        XCTAssertTrue(scrollToExistence(generatedQuizCount, in: app))
+        XCTAssertEqual(generatedQuizCount.value as? String, "2")
         quizRows.firstMatch.tap()
 
         let citation = app.buttons[
@@ -989,11 +994,10 @@ final class DailySwiftUITests: XCTestCase {
         )
         XCTAssertTrue(waitForEnabled(generate))
         generate.tap()
-        XCTAssertTrue(
-            app.descendants(matching: .any)[
-                "generated-learning.status.generated"
-            ].waitForExistence(timeout: 5)
-        )
+        let generated = app.descendants(matching: .any)[
+            "generated-learning.status.generated"
+        ]
+        XCTAssertTrue(scrollToExistence(generated, in: app))
 
         let openArticle = app.buttons[
             "generated-learning.open-article"
@@ -1143,11 +1147,10 @@ final class DailySwiftUITests: XCTestCase {
             in: app,
             topic: "actor isolation"
         )
-        XCTAssertTrue(
-            app.descendants(matching: .any)[
-                "generated-learning.status.unavailable"
-            ].waitForExistence(timeout: 5)
-        )
+        let unavailable = app.descendants(matching: .any)[
+            "generated-learning.status.unavailable"
+        ]
+        XCTAssertTrue(scrollToExistence(unavailable, in: app))
         XCTAssertFalse(generate.isEnabled)
         let fallback = app.buttons["generated-learning.fallback"]
         XCTAssertTrue(scrollToHittable(fallback, in: app))
@@ -1183,11 +1186,10 @@ final class DailySwiftUITests: XCTestCase {
         XCTAssertTrue(waitForEnabled(generate))
         generate.tap()
 
-        XCTAssertTrue(
-            app.descendants(matching: .any)[
-                "generated-learning.status.rejected"
-            ].waitForExistence(timeout: 5)
-        )
+        let rejected = app.descendants(matching: .any)[
+            "generated-learning.status.rejected"
+        ]
+        XCTAssertTrue(scrollToExistence(rejected, in: app))
         XCTAssertFalse(
             app.buttons["generated-learning.open-article"].exists
         )
@@ -1212,7 +1214,7 @@ final class DailySwiftUITests: XCTestCase {
         generate.tap()
 
         let cancel = app.buttons["generated-learning.cancel"]
-        XCTAssertTrue(cancel.waitForExistence(timeout: 5))
+        XCTAssertTrue(scrollToHittable(cancel, in: app))
         cancel.tap()
         XCTAssertTrue(
             app.descendants(matching: .any)[
@@ -1223,22 +1225,21 @@ final class DailySwiftUITests: XCTestCase {
             app.buttons["generated-learning.generate"].exists,
             "A second request must remain unavailable while cancellation drains."
         )
-        XCTAssertTrue(
-            app.descendants(matching: .any)[
-                "generated-learning.status.cancelled"
-            ].waitForExistence(timeout: 5)
-        )
+        let cancelled = app.descendants(matching: .any)[
+            "generated-learning.status.cancelled"
+        ]
+        XCTAssertTrue(scrollToExistence(cancelled, in: app))
         XCTAssertTrue(waitForEnabled(generate))
         XCTAssertFalse(
             app.buttons["generated-learning.open-article"].exists
         )
 
+        XCTAssertTrue(scrollToHittable(generate, in: app))
         generate.tap()
-        XCTAssertTrue(
-            app.descendants(matching: .any)[
-                "generated-learning.status.generated"
-            ].waitForExistence(timeout: 5)
-        )
+        let generated = app.descendants(matching: .any)[
+            "generated-learning.status.generated"
+        ]
+        XCTAssertTrue(scrollToExistence(generated, in: app))
     }
 
     @MainActor
@@ -1260,18 +1261,16 @@ final class DailySwiftUITests: XCTestCase {
         XCTAssertTrue(waitForEnabled(generate))
         generate.tap()
 
-        XCTAssertTrue(
-            app.descendants(matching: .any)[
-                "generated-learning.status.finalizing"
-            ].waitForExistence(timeout: 5)
-        )
+        let finalizing = app.descendants(matching: .any)[
+            "generated-learning.status.finalizing"
+        ]
+        XCTAssertTrue(scrollToExistence(finalizing, in: app))
         XCTAssertFalse(app.buttons["generated-learning.cancel"].exists)
         XCTAssertFalse(app.buttons["generated-learning.generate"].exists)
-        XCTAssertTrue(
-            app.descendants(matching: .any)[
-                "generated-learning.status.generated"
-            ].waitForExistence(timeout: 5)
-        )
+        let generated = app.descendants(matching: .any)[
+            "generated-learning.status.generated"
+        ]
+        XCTAssertTrue(scrollToExistence(generated, in: app))
     }
 
     @MainActor
@@ -1286,19 +1285,19 @@ final class DailySwiftUITests: XCTestCase {
 
         app.launch()
         _ = openGeneratedComposer(in: app, topic: "actor isolation")
+        let storageUnavailable = app.descendants(matching: .any)[
+            "generated-learning.status.storage-unavailable"
+        ]
         XCTAssertTrue(
-            app.descendants(matching: .any)[
-                "generated-learning.status.storage-unavailable"
-            ].waitForExistence(timeout: 5)
+            scrollToExistence(storageUnavailable, in: app)
         )
         let retry = app.buttons["generated-learning.retry-storage"]
-        XCTAssertTrue(retry.waitForExistence(timeout: 5))
+        XCTAssertTrue(scrollToHittable(retry, in: app))
         retry.tap()
-        XCTAssertTrue(
-            app.descendants(matching: .any)[
-                "generated-learning.status.ready"
-            ].waitForExistence(timeout: 5)
-        )
+        let ready = app.descendants(matching: .any)[
+            "generated-learning.status.ready"
+        ]
+        XCTAssertTrue(scrollToExistence(ready, in: app))
     }
 
     @MainActor
@@ -1317,12 +1316,16 @@ final class DailySwiftUITests: XCTestCase {
         )
         XCTAssertTrue(waitForEnabled(generate))
         generate.tap()
+        let failed = app.descendants(matching: .any)[
+            "generated-learning.status.failed"
+        ]
+        XCTAssertTrue(scrollToExistence(failed, in: app))
         XCTAssertTrue(
-            app.descendants(matching: .any)[
-                "generated-learning.status.failed"
-            ].waitForExistence(timeout: 5)
+            scrollToExistence(
+                app.buttons["generated-learning.fallback"],
+                in: app
+            )
         )
-        XCTAssertTrue(app.buttons["generated-learning.fallback"].exists)
     }
 
     @MainActor
@@ -1744,11 +1747,11 @@ final class DailySwiftUITests: XCTestCase {
         let topicField = app.descendants(matching: .any)[
             "generated-learning.topic"
         ]
-        XCTAssertTrue(topicField.waitForExistence(timeout: 5))
+        XCTAssertTrue(scrollToHittable(topicField, in: app))
         topicField.tap()
         topicField.typeText(topic)
         let generate = app.buttons["generated-learning.generate"]
-        XCTAssertTrue(scrollToExistence(generate, in: app))
+        XCTAssertTrue(scrollToHittable(generate, in: app))
         return generate
     }
 
