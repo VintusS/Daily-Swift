@@ -4,6 +4,7 @@ struct LearningProgressView: View {
     let catalog: LearningCatalog
     let snapshot: LearningProgressSnapshot
     let evidence: LearningEvidenceSummary
+    let generatedArtifacts: [GeneratedLearningArtifact]
     let isTemporarySession: Bool
     let onOpenPreferences: () -> Void
     let onPrivacy: () -> Void
@@ -14,6 +15,28 @@ struct LearningProgressView: View {
                 $0.attemptedAt > $1.attemptedAt
             }.prefix(5)
         )
+    }
+
+    private var generatedAttemptCount: Int {
+        snapshot.attempts.filter {
+            $0.challengeID.hasPrefix("generated.quiz.")
+        }.count
+    }
+
+    private var generatedArticleActivityCount: Int {
+        snapshot.articleActivities.filter {
+            $0.articleID.hasPrefix("generated.article.")
+                && ($0.lastOpenedAt != nil
+                    || $0.completedAt != nil
+                    || $0.isBookmarked)
+        }.count
+    }
+
+    private var hasAnyRecordedActivity: Bool {
+        evidence.totalAttempts > 0
+            || !evidence.readArticleIDs.isEmpty
+            || generatedAttemptCount > 0
+            || generatedArticleActivityCount > 0
     }
 
     var body: some View {
@@ -108,32 +131,42 @@ struct LearningProgressView: View {
 
     private var progressHeading: String {
         if isTemporarySession {
-            return evidence.totalAttempts == 0
-                && evidence.readArticleIDs.isEmpty
+            return !hasAnyRecordedActivity
                 ? "This session’s evidence starts here."
                 : "This session’s work is adding up."
         }
 
-        return evidence.totalAttempts == 0
-            && evidence.readArticleIDs.isEmpty
+        return !hasAnyRecordedActivity
             ? "Your evidence starts here."
             : "Your work is adding up."
     }
 
     private var progressSummary: String {
-        guard evidence.totalAttempts > 0 || !evidence.readArticleIDs.isEmpty
-        else {
+        guard hasAnyRecordedActivity else {
             if isTemporarySession {
                 return "Read an article or answer a challenge to create temporary session evidence. It will disappear when the app closes."
             }
             return "Read an article or answer a challenge to create your first saved evidence. No mastery score is guessed."
         }
 
-        if isTemporarySession {
-            return "\(evidence.correctAttempts) correct answers across \(evidence.totalAttempts) attempts, plus \(evidence.readArticleIDs.count) read articles in this temporary session. These facts are not saved and are not a mastery estimate."
+        var parts: [String] = []
+        if evidence.totalAttempts > 0 || !evidence.readArticleIDs.isEmpty {
+            parts.append(
+                "\(evidence.correctAttempts) correct answers across \(evidence.totalAttempts) deterministic attempts, plus \(evidence.readArticleIDs.count) reviewed articles read."
+            )
         }
-
-        return "\(evidence.correctAttempts) correct answers across \(evidence.totalAttempts) attempts, plus \(evidence.readArticleIDs.count) read articles. These are activity facts, not a mastery estimate."
+        if generatedAttemptCount > 0
+            || generatedArticleActivityCount > 0 {
+            parts.append(
+                "\(generatedAttemptCount) experimental quiz attempts and \(generatedArticleActivityCount) generated article activities are recorded separately; they are not verified correctness or mastery."
+            )
+        }
+        parts.append(
+            isTemporarySession
+                ? "This temporary activity disappears when the app closes and is not a mastery estimate."
+                : "These are activity facts, not a mastery estimate."
+        )
+        return parts.joined(separator: " ")
     }
 
     private var evidenceOverview: some View {
@@ -213,7 +246,10 @@ struct LearningProgressView: View {
                         attempt: attempt,
                         challenge: catalog.challenge(
                             id: attempt.challengeID
-                        )
+                        ),
+                        generatedArtifact: generatedArtifacts.first {
+                            $0.quizID == attempt.challengeID
+                        }
                     )
                 }
             }
@@ -281,14 +317,13 @@ private struct DomainEvidenceCard: View {
 private struct AttemptEvidenceRow: View {
     let attempt: ChallengeAttempt
     let challenge: LearningChallenge?
+    let generatedArtifact: GeneratedLearningArtifact?
 
     var body: some View {
         LearningCard {
             HStack(alignment: .top, spacing: StudioTokens.Spacing.small) {
                 Image(
-                    systemName: attempt.isCorrect
-                        ? "checkmark.circle.fill"
-                        : "xmark.circle.fill"
+                    systemName: resultSymbolName
                 )
                 .foregroundStyle(StudioTokens.Color.primaryText)
                 .accessibilityHidden(true)
@@ -297,13 +332,27 @@ private struct AttemptEvidenceRow: View {
                     alignment: .leading,
                     spacing: StudioTokens.Spacing.xxSmall
                 ) {
-                    Text(challenge?.title ?? "Retired challenge")
+                    Text(
+                        challenge?.title
+                            ?? generatedArtifact?.article.title
+                            ?? (isGeneratedAttempt
+                                ? "Unavailable generated quiz"
+                                : "Retired challenge")
+                    )
                         .font(StudioTokens.Typography.sectionHeading)
                         .foregroundStyle(StudioTokens.Color.primaryText)
 
-                    Text(attempt.isCorrect ? "Correct answer" : "Incorrect answer")
+                    Text(resultLabel)
                         .font(StudioTokens.Typography.supporting)
                         .foregroundStyle(StudioTokens.Color.secondaryText)
+
+                    if isGeneratedAttempt {
+                        LearningBadge(
+                            "Experimental activity; not mastery",
+                            symbol: "flask",
+                            role: .warning
+                        )
+                    }
 
                     Text(
                         attempt.attemptedAt.formatted(
@@ -316,6 +365,50 @@ private struct AttemptEvidenceRow: View {
                 }
             }
             .accessibilityElement(children: .combine)
+            .accessibilityIdentifier(
+                "progress.attempt.\(attempt.id.uuidString.lowercased())"
+            )
         }
+    }
+
+    private var resultLabel: String {
+        if isGeneratedAttempt {
+            guard let generatedAnswerKeyMatch else {
+                return "Experimental generated answer recorded; its answer key is no longer available"
+            }
+            return generatedAnswerKeyMatch
+                ? "Matches the generated answer key"
+                : "Different from the generated answer key"
+        }
+        return attempt.isCorrect
+            ? "Correct answer"
+            : "Incorrect answer"
+    }
+
+    private var isGeneratedAttempt: Bool {
+        generatedArtifact != nil
+            || attempt.challengeID.hasPrefix("generated.quiz.")
+    }
+
+    private var generatedAnswerKeyMatch: Bool? {
+        guard let generatedArtifact else {
+            return nil
+        }
+        return attempt.selectedChoiceID
+            == generatedArtifact.quiz.answerKeyChoiceID
+    }
+
+    private var resultSymbolName: String {
+        if isGeneratedAttempt {
+            guard let generatedAnswerKeyMatch else {
+                return "questionmark.circle.fill"
+            }
+            return generatedAnswerKeyMatch
+                ? "checkmark.circle.fill"
+                : "xmark.circle.fill"
+        }
+        return attempt.isCorrect
+            ? "checkmark.circle.fill"
+            : "xmark.circle.fill"
     }
 }

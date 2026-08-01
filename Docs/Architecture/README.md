@@ -19,13 +19,13 @@ work packet. Accepted records take precedence over execution plans.
 | [ADR-002](ADR-002-local-learning-persistence.md) | Accepted | Local SwiftData learning evidence and file-storage split; CloudKit remains deferred |
 | ADR-003 | Planned | CloudKit sync and conflict resolution |
 | ADR-004 | Planned | Competency graph and mastery model |
-| [ADR-005](ADR-005-foundation-models-provider.md) | Proposed | Foundation Models provider abstraction; Packet 000-A device decision pending |
+| [ADR-005](ADR-005-foundation-models-provider.md) | Accepted | App-owned provider boundary and deterministic fallback; Apple adapter remains experimental pending device promotion evidence |
 | [ADR-006](ADR-006-source-ingestion-and-retrieval.md) | Accepted | Private source storage, deterministic chunks, exact citations, and measured retrieval foundation |
-| ADR-007 | Planned | Generated-content trust and validation |
+| [ADR-007](ADR-007-generated-content-trust.md) | Accepted | Experimental imported-source content, fail-closed presentation, and mastery exclusion |
 | ADR-008 | Planned | Code-execution capability levels |
 | [ADR-009](ADR-009-private-source-rights.md) | Accepted | Lawful private import, rights metadata, local-only handling, and deletion policy |
 | ADR-010 | Planned | Gamification economy and anti-blocking rules |
-| ADR-011 | Planned | Prompt versioning and model-update testing |
+| [ADR-011](ADR-011-generation-identity-and-versioning.md) | Accepted | Generation identity, prompt/schema versions, local artifact storage, and invalidation |
 | ADR-012 | Planned | Open-source code versus content repositories |
 
 Use [ADR-TEMPLATE.md](ADR-TEMPLATE.md) for new records.

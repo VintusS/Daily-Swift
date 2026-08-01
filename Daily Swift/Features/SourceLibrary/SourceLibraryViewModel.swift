@@ -60,8 +60,16 @@ final class SourceLibraryViewModel {
     @ObservationIgnored
     private let service: any SourceLibraryServing
 
-    init(service: any SourceLibraryServing) {
+    @ObservationIgnored
+    private let sourceDeleter: any LearningSourceDeleting
+
+    init(
+        service: any SourceLibraryServing,
+        sourceDeleter: (any LearningSourceDeleting)? = nil
+    ) {
         self.service = service
+        self.sourceDeleter = sourceDeleter
+            ?? DirectLearningSourceDeleter(sourceLibrary: service)
     }
 
     var documents: [SourceDocument] {
@@ -180,7 +188,7 @@ final class SourceLibraryViewModel {
         }
 
         do {
-            try await service.delete(sourceID: sourceID)
+            try await sourceDeleter.deleteSource(id: sourceID)
             snapshot = try await service.restore()
             state = .ready
             feedback = .deleted

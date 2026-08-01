@@ -34,7 +34,7 @@ actor SourceLibraryService: SourceLibraryServing {
     }
 
     func restore() async throws -> SourceLibrarySnapshot {
-        try cleanInterruptedFileOperations()
+        try await recoverInterruptedFileOperations()
         let snapshot = try await metadataStore.restore()
         return try await hydratePageLocations(in: snapshot)
     }
@@ -222,6 +222,7 @@ actor SourceLibraryService: SourceLibraryServing {
     }
 
     func delete(sourceID: UUID) async throws {
+        try await recoverInterruptedFileOperations()
         let liveDirectory = directoryURL(for: sourceID)
         let stagedDirectory = rootURL.appendingPathComponent(
             ".deleting-\(sourceID.uuidString.lowercased())",
@@ -261,8 +262,7 @@ actor SourceLibraryService: SourceLibraryServing {
         }
     }
 
-    private func cleanInterruptedFileOperations()
-        throws(SourceLibraryFailure) {
+    private func recoverInterruptedFileOperations() async throws {
         guard fileManager.fileExists(atPath: rootURL.path) else {
             return
         }
@@ -274,13 +274,43 @@ actor SourceLibraryService: SourceLibraryServing {
             )
             for entry in entries {
                 let name = entry.lastPathComponent
-                if name.hasPrefix(".importing-")
-                    || name.hasPrefix(".deleting-") {
+                if name.hasPrefix(".importing-") {
                     try fileManager.removeItem(at: entry)
+                    continue
+                }
+                guard name.hasPrefix(".deleting-") else {
+                    continue
+                }
+                let identifier = String(
+                    name.dropFirst(".deleting-".count)
+                )
+                guard let sourceID = UUID(uuidString: identifier) else {
+                    try fileManager.removeItem(at: entry)
+                    continue
+                }
+
+                // Query metadata before mutating the staged private bytes. If
+                // the query fails, restoration fails and the staged directory
+                // remains intact for a later retry.
+                let document = try await metadataStore.document(id: sourceID)
+                let liveDirectory = directoryURL(for: sourceID)
+                if document == nil {
+                    try fileManager.removeItem(at: entry)
+                } else if fileManager.fileExists(
+                    atPath: liveDirectory.path
+                ) {
+                    try fileManager.removeItem(at: entry)
+                } else {
+                    try fileManager.moveItem(
+                        at: entry,
+                        to: liveDirectory
+                    )
                 }
             }
+        } catch let failure as SourceLibraryFailure {
+            throw failure
         } catch {
-            throw .readFailed
+            throw SourceLibraryFailure.readFailed
         }
     }
 

@@ -5,9 +5,12 @@ import UniformTypeIdentifiers
 struct LibraryView: View {
     let catalog: LearningCatalog
     let snapshot: LearningProgressSnapshot
+    let generatedArtifacts: [GeneratedLearningArtifact]
     @Bindable var sourceLibraryViewModel: SourceLibraryViewModel
     @Bindable var sourceRetrievalViewModel: SourceRetrievalViewModel
     let onOpenArticle: (String) -> Void
+    let onGenerateLearning: () -> Void
+    let onOpenGeneratedArticle: (GeneratedLearningArtifact) -> Void
     let onOpenSource: (UUID) -> Void
     let onOpenCitation: (SourceCitation) -> Void
 
@@ -27,6 +30,24 @@ struct LibraryView: View {
                 || article.title.localizedCaseInsensitiveContains(query)
                 || article.summary.localizedCaseInsensitiveContains(query)
                 || article.domain.title.localizedCaseInsensitiveContains(query)
+            return matchesBookmark && matchesSearch
+        }
+    }
+
+    private var visibleGeneratedArtifacts: [GeneratedLearningArtifact] {
+        generatedArtifacts.filter { artifact in
+            let activity = snapshot.activity(for: artifact.articleID)
+            let matchesBookmark = !showsBookmarksOnly
+                || activity.isBookmarked
+            let query = searchText.trimmingCharacters(
+                in: .whitespacesAndNewlines
+            )
+            let matchesSearch = query.isEmpty
+                || artifact.article.title
+                    .localizedCaseInsensitiveContains(query)
+                || artifact.topic.localizedCaseInsensitiveContains(query)
+                || artifact.article.learningObjective
+                    .localizedCaseInsensitiveContains(query)
             return matchesBookmark && matchesSearch
         }
     }
@@ -52,6 +73,29 @@ struct LibraryView: View {
 
     var body: some View {
         List {
+            if !showsBookmarksOnly {
+                Section {
+                    Button(action: onGenerateLearning) {
+                        Label(
+                            "Generate article and quiz from sources",
+                            systemImage: "sparkles.rectangle.stack"
+                        )
+                    }
+                    .accessibilityHint(
+                        "Opens a private, foreground on-device generation request using exact imported passages."
+                    )
+                    .accessibilityIdentifier(
+                        "generated-learning.open-composer"
+                    )
+                } header: {
+                    Text("Generated learning")
+                } footer: {
+                    Text(
+                        "Generated content is experimental user material. It keeps exact citations and never updates mastery."
+                    )
+                }
+            }
+
             if sourceLibraryViewModel.feedback != .idle {
                 Section {
                     SourceLibraryFeedbackNotice(
@@ -171,8 +215,10 @@ struct LibraryView: View {
             }
 
             if visibleArticles.isEmpty
+                && visibleGeneratedArtifacts.isEmpty
                 && visibleSources.isEmpty
-                && sourceRetrievalViewModel.resultCount == 0 {
+                && (showsBookmarksOnly
+                    || sourceRetrievalViewModel.resultCount == 0) {
                 Section {
                     ContentUnavailableView(
                         showsBookmarksOnly
@@ -188,30 +234,59 @@ struct LibraryView: View {
                         )
                     )
                 }
-            } else if !visibleArticles.isEmpty {
-                Section {
-                    ForEach(visibleArticles) { article in
-                        Button {
-                            onOpenArticle(article.id)
-                        } label: {
-                            ArticleCatalogRow(
-                                article: article,
-                                activity: snapshot.activity(
-                                    for: article.id
+            } else {
+                if !visibleGeneratedArtifacts.isEmpty {
+                    Section {
+                        ForEach(visibleGeneratedArtifacts) { artifact in
+                            Button {
+                                onOpenGeneratedArticle(artifact)
+                            } label: {
+                                GeneratedArticleHistoryRow(
+                                    artifact: artifact,
+                                    activity: snapshot.activity(
+                                        for: artifact.articleID
+                                    )
                                 )
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier(
+                                "generated-article.open.\(artifact.id.uuidString.lowercased())"
                             )
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier(
-                            "library.open.\(article.id)"
+                    } header: {
+                        Text("Generated articles")
+                    } footer: {
+                        Text(
+                            "These private artifacts passed structural and exact-citation checks, not independent factual verification."
                         )
                     }
-                } header: {
-                    Text("Project-owned learning articles")
-                } footer: {
-                    Text(
-                        "Project Seed content is bundled for offline testing. It becomes Reviewed Core only after owner review."
-                    )
+                }
+
+                if !visibleArticles.isEmpty {
+                    Section {
+                        ForEach(visibleArticles) { article in
+                            Button {
+                                onOpenArticle(article.id)
+                            } label: {
+                                ArticleCatalogRow(
+                                    article: article,
+                                    activity: snapshot.activity(
+                                        for: article.id
+                                    )
+                                )
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier(
+                                "library.open.\(article.id)"
+                            )
+                        }
+                    } header: {
+                        Text("Project-owned learning articles")
+                    } footer: {
+                        Text(
+                            "Project Seed content is bundled for offline testing. It becomes Reviewed Core only after owner review."
+                        )
+                    }
                 }
             }
         }

@@ -41,6 +41,9 @@ enum LearningStudioTab: String, CaseIterable, Codable, Hashable, Identifiable, S
 enum LearningStudioRoute: Hashable, Sendable {
     case article(String)
     case challenge(String)
+    case generatedLearning
+    case generatedArticle(UUID)
+    case generatedQuiz(UUID)
     case sourceDocument(UUID)
     case sourceCitation(SourceCitation)
     case preferences
@@ -96,6 +99,29 @@ final class LearningStudioRouter {
     func openChallenge(_ challengeID: String) {
         selectedTab = .challenges
         let route = LearningStudioRoute.challenge(challengeID)
+        if challengesPath.last != route {
+            challengesPath.append(route)
+        }
+    }
+
+    func openGeneratedLearning() {
+        selectedTab = .library
+        if libraryPath.last != .generatedLearning {
+            libraryPath.append(.generatedLearning)
+        }
+    }
+
+    func openGeneratedArticle(_ artifactID: UUID) {
+        selectedTab = .library
+        let route = LearningStudioRoute.generatedArticle(artifactID)
+        if libraryPath.last != route {
+            libraryPath.append(route)
+        }
+    }
+
+    func openGeneratedQuiz(_ artifactID: UUID) {
+        selectedTab = .challenges
+        let route = LearningStudioRoute.generatedQuiz(artifactID)
         if challengesPath.last != route {
             challengesPath.append(route)
         }

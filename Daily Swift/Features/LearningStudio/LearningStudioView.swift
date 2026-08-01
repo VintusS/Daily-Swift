@@ -6,6 +6,7 @@ struct LearningStudioView: View {
     @State private var viewModel: LearningStudioViewModel
     @State private var sourceLibraryViewModel: SourceLibraryViewModel
     @State private var sourceRetrievalViewModel: SourceRetrievalViewModel
+    @State private var generatedLearningViewModel: GeneratedLearningViewModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let onPrivacy: () -> Void
 
@@ -13,6 +14,7 @@ struct LearningStudioView: View {
         viewModel: LearningStudioViewModel,
         sourceLibraryViewModel: SourceLibraryViewModel,
         sourceRetrievalViewModel: SourceRetrievalViewModel,
+        generatedLearningViewModel: GeneratedLearningViewModel,
         onPrivacy: @escaping () -> Void
     ) {
         _viewModel = State(initialValue: viewModel)
@@ -21,6 +23,9 @@ struct LearningStudioView: View {
         )
         _sourceRetrievalViewModel = State(
             initialValue: sourceRetrievalViewModel
+        )
+        _generatedLearningViewModel = State(
+            initialValue: generatedLearningViewModel
         )
         self.onPrivacy = onPrivacy
     }
@@ -63,6 +68,7 @@ struct LearningStudioView: View {
                 viewModel.load()
                 await viewModel.waitForCurrentOperation()
             }
+            await generatedLearningViewModel.loadIfNeeded()
         }
         .onChange(of: viewModel.retryableFailure) {
             previousFailure, currentFailure in
@@ -106,7 +112,12 @@ struct LearningStudioView: View {
                 ChallengesView(
                     catalog: viewModel.catalog,
                     evidence: viewModel.evidence,
-                    onOpenChallenge: viewModel.openChallenge
+                    snapshot: viewModel.snapshot,
+                    generatedArtifacts:
+                        generatedLearningViewModel.artifacts,
+                    onOpenChallenge: viewModel.openChallenge,
+                    onOpenGeneratedQuiz:
+                        viewModel.openGeneratedQuiz
                 )
                 .navigationDestination(
                     for: LearningStudioRoute.self,
@@ -126,10 +137,16 @@ struct LearningStudioView: View {
                 LibraryView(
                     catalog: viewModel.catalog,
                     snapshot: viewModel.snapshot,
+                    generatedArtifacts:
+                        generatedLearningViewModel.artifacts,
                     sourceLibraryViewModel: sourceLibraryViewModel,
                     sourceRetrievalViewModel:
                         sourceRetrievalViewModel,
                     onOpenArticle: viewModel.openArticle,
+                    onGenerateLearning:
+                        viewModel.openGeneratedLearning,
+                    onOpenGeneratedArticle:
+                        viewModel.openGeneratedArticle,
                     onOpenSource: viewModel.router.openSource,
                     onOpenCitation: viewModel.router.openCitation
                 )
@@ -152,6 +169,8 @@ struct LearningStudioView: View {
                     catalog: viewModel.catalog,
                     snapshot: viewModel.snapshot,
                     evidence: viewModel.evidence,
+                    generatedArtifacts:
+                        generatedLearningViewModel.artifacts,
                     isTemporarySession:
                         viewModel.sessionMode == .temporary,
                     onOpenPreferences: viewModel.openPreferences,
@@ -198,14 +217,24 @@ struct LearningStudioView: View {
     ) -> Bool {
         guard failure.operation == .appendAttempt,
               viewModel.router.selectedTab == .challenges,
-              case let .challenge(challengeID) =
-                  viewModel.router.challengesPath.last,
+              let challengeID = visibleChallengeID,
               viewModel.ownsRetryableAttemptFailure(
                   challengeID: challengeID
               ) else {
             return true
         }
         return false
+    }
+
+    private var visibleChallengeID: String? {
+        switch viewModel.router.challengesPath.last {
+        case let .challenge(challengeID):
+            challengeID
+        case let .generatedQuiz(artifactID):
+            generatedLearningViewModel.artifact(id: artifactID)?.quizID
+        default:
+            nil
+        }
     }
 
     private func path(
@@ -299,6 +328,84 @@ struct LearningStudioView: View {
                 MissingLearningContentView(kind: "challenge")
             }
 
+        case .generatedLearning:
+            GeneratedLearningComposerView(
+                viewModel: generatedLearningViewModel,
+                documents: sourceLibraryViewModel.documents,
+                onOpenArticle: viewModel.openGeneratedArticle,
+                onOpenQuiz: viewModel.openGeneratedQuiz,
+                onOpenReviewedLearning:
+                    viewModel.router.returnToLibraryRoot
+            )
+
+        case let .generatedArticle(artifactID):
+            if let artifact = generatedLearningViewModel.artifact(
+                id: artifactID
+            ) {
+                let articleID = artifact.articleID
+                GeneratedArticleReaderView(
+                    artifact: artifact,
+                    activity: viewModel.articleActivity(
+                        for: articleID
+                    ),
+                    onToggleBookmark: {
+                        viewModel.setGeneratedArticleBookmark(
+                            articleID,
+                            isBookmarked: !viewModel.articleActivity(
+                                for: articleID
+                            ).isBookmarked
+                        )
+                        await viewModel.waitForCurrentOperation()
+                    },
+                    onMarkRead: {
+                        viewModel.markGeneratedArticleRead(
+                            articleID,
+                            isRead: true
+                        )
+                        await viewModel.waitForCurrentOperation()
+                    },
+                    onOpenCitation: viewModel.router.openCitation,
+                    onOpenQuiz: {
+                        viewModel.openGeneratedQuiz(artifact.id)
+                    }
+                )
+            } else {
+                MissingLearningContentView(kind: "generated article")
+            }
+
+        case let .generatedQuiz(artifactID):
+            if let artifact = generatedLearningViewModel.artifact(
+                id: artifactID
+            ) {
+                let quizID = artifact.quizID
+                GeneratedQuizPlayerView(
+                    artifact: artifact,
+                    hasSavedAnswerKeyMatch:
+                        hasSavedAnswerKeyMatch(for: artifact),
+                    currentFeedback: viewModel.feedback(for: quizID),
+                    onSubmit: { selectedChoiceID in
+                        _ = viewModel.submitGeneratedAnswer(
+                            artifact: artifact,
+                            selectedChoiceID: selectedChoiceID
+                        )
+                        await viewModel.waitForCurrentOperation()
+                        return viewModel.feedback(for: quizID)
+                    },
+                    onRetrySave: {
+                        viewModel.retry()
+                        await viewModel.waitForCurrentOperation()
+                        return viewModel.feedback(for: quizID)?.storage
+                            ?? .failed
+                    },
+                    onOpenCitation: viewModel.router.openCitation,
+                    onOpenArticle: {
+                        viewModel.openGeneratedArticle(artifact)
+                    }
+                )
+            } else {
+                MissingLearningContentView(kind: "generated quiz")
+            }
+
         case let .sourceDocument(sourceID):
             if let document = sourceLibraryViewModel.document(
                 id: sourceID
@@ -314,9 +421,11 @@ struct LearningStudioView: View {
                     onOpenCitation:
                         viewModel.router.openCitation,
                     onDelete: {
-                        await sourceLibraryViewModel.delete(
+                        let didDelete = await sourceLibraryViewModel.delete(
                             sourceID: sourceID
                         )
+                        await generatedLearningViewModel.reload()
+                        return didDelete
                     },
                     onDeleted:
                         viewModel.router.returnToLibraryRoot
@@ -345,6 +454,16 @@ struct LearningStudioView: View {
                 onReset: resetProgress,
                 onPrivacy: onPrivacy
             )
+        }
+    }
+
+    private func hasSavedAnswerKeyMatch(
+        for artifact: GeneratedLearningArtifact
+    ) -> Bool {
+        viewModel.snapshot.attempts.contains {
+            $0.challengeID == artifact.quizID
+                && $0.selectedChoiceID
+                    == artifact.quiz.answerKeyChoiceID
         }
     }
 

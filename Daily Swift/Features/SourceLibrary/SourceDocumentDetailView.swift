@@ -9,7 +9,10 @@ struct SourceDocumentDetailView: View {
     let onDeleted: () -> Void
 
     @State private var showsDeleteConfirmation = false
+    @State private var isDeletionInProgress = false
+    @State private var didFailDeletion = false
     @AccessibilityFocusState private var headingIsFocused: Bool
+    @AccessibilityFocusState private var deletionFailureIsFocused: Bool
 
     var body: some View {
         List {
@@ -74,17 +77,31 @@ struct SourceDocumentDetailView: View {
             }
 
             Section {
+                if didFailDeletion {
+                    StatusNotice(
+                        role: .error,
+                        title: "Deletion was not completed",
+                        message: "The source may remain, while generated learning that cited it may already be removed. Try again before assuming all private data is gone."
+                    )
+                    .accessibilityFocused(
+                        $deletionFailureIsFocused
+                    )
+                    .accessibilityIdentifier(
+                        "source.delete-failure"
+                    )
+                }
+
                 Button(role: .destructive) {
                     showsDeleteConfirmation = true
                 } label: {
                     Label(
-                        isDeleting
+                        isDeleting || isDeletionInProgress
                             ? "Deleting source"
                             : "Delete source and passages",
                         systemImage: "trash"
                     )
                 }
-                .disabled(isDeleting)
+                .disabled(isDeleting || isDeletionInProgress)
                 .accessibilityIdentifier("source.delete")
             }
         }
@@ -98,15 +115,21 @@ struct SourceDocumentDetailView: View {
             Button("Cancel", role: .cancel) {}
             Button("Delete Source", role: .destructive) {
                 Task {
+                    isDeletionInProgress = true
+                    didFailDeletion = false
                     if await onDelete() {
                         onDeleted()
+                    } else {
+                        isDeletionInProgress = false
+                        didFailDeletion = true
+                        deletionFailureIsFocused = true
                     }
                 }
             }
             .accessibilityIdentifier("source.confirm-delete")
         } message: {
             Text(
-                "Daily Swift will remove the stored original, normalized text, metadata, and every derived passage. This cannot be undone."
+                "Daily Swift will remove the stored original, normalized text, metadata, derived passages, and generated article and quiz bodies that cite this source. Source-free experimental activity IDs, selected choices, and read or bookmark timestamps may remain locally and never affect mastery. This cannot be undone."
             )
         }
         .task {

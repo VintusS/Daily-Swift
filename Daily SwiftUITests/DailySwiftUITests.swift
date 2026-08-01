@@ -571,6 +571,761 @@ final class DailySwiftUITests: XCTestCase {
     }
 
     @MainActor
+    func testGeneratedLearningFromImportedPDFCanBeReadAndCompleted() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--ui-testing",
+            "--app-shell-scenario=ready",
+            "--learning-studio-scenario=empty",
+            "--source-library-scenario=seeded-pdf",
+        ]
+
+        app.launch()
+        app.tabBars.buttons["Library"].tap()
+        XCTAssertTrue(
+            app.navigationBars["Library"].waitForExistence(timeout: 5)
+        )
+
+        let openComposer = app.buttons[
+            "generated-learning.open-composer"
+        ]
+        XCTAssertTrue(openComposer.waitForExistence(timeout: 5))
+        openComposer.tap()
+
+        XCTAssertTrue(
+            app.descendants(matching: .any)[
+                "generated-learning.composer"
+            ]
+            .waitForExistence(timeout: 5)
+        )
+        XCTAssertTrue(
+            app.staticTexts["Experimental / User Material"]
+                .waitForExistence(timeout: 5)
+        )
+
+        let topic = app.descendants(matching: .any)[
+            "generated-learning.topic"
+        ]
+        XCTAssertTrue(topic.waitForExistence(timeout: 5))
+        topic.tap()
+        topic.typeText("page provenance")
+
+        let allSources = app.buttons["generated-learning.source.all"]
+        XCTAssertTrue(scrollToHittable(allSources, in: app))
+        XCTAssertEqual(allSources.value as? String, "Selected")
+        allSources.tap()
+
+        let generate = app.buttons["generated-learning.generate"]
+        XCTAssertTrue(scrollToHittable(generate, in: app))
+        generate.tap()
+
+        let openArticle = app.buttons[
+            "generated-learning.open-article"
+        ]
+        XCTAssertTrue(
+            openArticle.waitForExistence(timeout: 5),
+            "The deterministic UI-testing provider should save a cited article and quiz."
+        )
+        XCTAssertTrue(scrollToHittable(openArticle, in: app))
+        openArticle.tap()
+
+        XCTAssertTrue(
+            app.descendants(matching: .any)[
+                "generated-article.reader"
+            ]
+            .waitForExistence(timeout: 5)
+        )
+        XCTAssertTrue(
+            app.descendants(matching: .any)[
+                "generated-article.experimental-notice"
+            ]
+                .waitForExistence(timeout: 5)
+        )
+
+        let articleCitation = app.buttons[
+            "generated-article.citation.source-card-1"
+        ]
+        XCTAssertTrue(scrollToHittable(articleCitation, in: app))
+        articleCitation.tap()
+
+        XCTAssertTrue(
+            app.descendants(matching: .any)["citation.reader"]
+                .waitForExistence(timeout: 5)
+        )
+        XCTAssertTrue(
+            app.staticTexts["Exact stored passage"]
+                .waitForExistence(timeout: 5)
+        )
+        XCTAssertTrue(app.staticTexts["Page 1"].exists)
+
+        let citationBack = app.navigationBars["Exact Citation"]
+            .buttons.firstMatch
+        XCTAssertTrue(citationBack.waitForExistence(timeout: 5))
+        citationBack.tap()
+
+        XCTAssertTrue(
+            app.descendants(matching: .any)[
+                "generated-article.reader"
+            ]
+            .waitForExistence(timeout: 5)
+        )
+        let markRead = app.buttons["generated-article.mark-read"]
+        XCTAssertTrue(scrollToHittable(markRead, in: app))
+        markRead.tap()
+
+        let articleRead = XCTNSPredicateExpectation(
+            predicate: NSPredicate(
+                format: "label == %@",
+                "Generated article read"
+            ),
+            object: markRead
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [articleRead], timeout: 5),
+            .completed,
+            "The generated article completion should be saved before continuing."
+        )
+
+        let openQuiz = app.buttons["generated-article.open-quiz"]
+        XCTAssertTrue(scrollToHittable(openQuiz, in: app))
+        openQuiz.tap()
+
+        XCTAssertTrue(
+            app.descendants(matching: .any)["generated-quiz.player"]
+                .waitForExistence(timeout: 5)
+        )
+        XCTAssertTrue(
+            app.staticTexts["Experimental answer key"]
+                .waitForExistence(timeout: 5)
+        )
+
+        let answer = app.buttons["generated-quiz.choice.choice-1"]
+        XCTAssertTrue(answer.waitForExistence(timeout: 5))
+        answer.tap()
+
+        let submit = app.buttons["generated-quiz.submit"]
+        XCTAssertTrue(submit.waitForExistence(timeout: 5))
+        submit.tap()
+
+        let generatedFeedback = app.descendants(matching: .any)[
+            "generated-quiz.feedback"
+        ]
+        XCTAssertTrue(generatedFeedback.waitForExistence(timeout: 5))
+        XCTAssertEqual(
+            generatedFeedback.label,
+            "Matches the generated answer key"
+        )
+        let generatedAttemptSaved = XCTNSPredicateExpectation(
+            predicate: NSPredicate(
+                format: "value CONTAINS %@",
+                "Attempt saved as activity evidence. It does not update mastery."
+            ),
+            object: generatedFeedback
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(
+                for: [generatedAttemptSaved],
+                timeout: 5
+            ),
+            .completed,
+            "The generated attempt should be durable before continuing."
+        )
+
+        let quizCitation = app.buttons[
+            "generated-quiz.citation.source-card-1"
+        ]
+        XCTAssertTrue(scrollToHittable(quizCitation, in: app))
+        quizCitation.tap()
+        XCTAssertTrue(
+            app.descendants(matching: .any)["citation.reader"]
+                .waitForExistence(timeout: 5)
+        )
+        XCTAssertTrue(app.staticTexts["Page 1"].exists)
+
+        returnToNavigationRoot("Library", in: app)
+        let generatedArticleRows = app.buttons.matching(
+            NSPredicate(
+                format: "identifier BEGINSWITH %@",
+                "generated-article.open."
+            )
+        )
+        XCTAssertTrue(
+            scrollToExistence(generatedArticleRows.firstMatch, in: app)
+        )
+
+        app.tabBars.buttons["Challenges"].tap()
+        returnToNavigationRoot("Challenges", in: app)
+        let generatedQuizRows = app.buttons.matching(
+            NSPredicate(
+                format: "identifier BEGINSWITH %@",
+                "generated-quiz.open."
+            )
+        )
+        XCTAssertTrue(
+            scrollToExistence(generatedQuizRows.firstMatch, in: app)
+        )
+
+        app.tabBars.buttons["Progress"].tap()
+        let generatedAttempts = app.descendants(matching: .any).matching(
+            NSPredicate(
+                format: "identifier BEGINSWITH %@",
+                "progress.attempt."
+            )
+        )
+        XCTAssertTrue(
+            scrollToExistence(generatedAttempts.firstMatch, in: app)
+        )
+    }
+
+    @MainActor
+    func testGeneratedLearningWithoutSourcesKeepsReviewedLearningAvailable()
+        throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--ui-testing",
+            "--app-shell-scenario=ready",
+            "--learning-studio-scenario=empty",
+            "--source-library-scenario=empty",
+            "-AppleInterfaceStyle",
+            "Dark",
+            "-UIPreferredContentSizeCategoryName",
+            "UICTContentSizeCategoryAccessibilityXXXL",
+            "-UIAccessibilityDarkerSystemColorsEnabled",
+            "YES",
+            "-UIAccessibilityReduceMotionEnabled",
+            "YES",
+        ]
+
+        app.launch()
+        app.tabBars.buttons["Library"].tap()
+        XCTAssertTrue(
+            app.navigationBars["Library"].waitForExistence(timeout: 5)
+        )
+        let openComposer = app.buttons[
+            "generated-learning.open-composer"
+        ]
+        XCTAssertTrue(openComposer.waitForExistence(timeout: 5))
+        openComposer.tap()
+
+        XCTAssertTrue(
+            app.descendants(matching: .any)[
+                "generated-learning.no-sources"
+            ]
+            .waitForExistence(timeout: 5)
+        )
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name =
+            "Generated learning no-source fallback accessibility XXXL"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+
+        let generate = app.buttons["generated-learning.generate"]
+        XCTAssertTrue(scrollToExistence(generate, in: app))
+        XCTAssertFalse(generate.isEnabled)
+
+        let composerBack = app.navigationBars["Generate Learning"]
+            .buttons.firstMatch
+        XCTAssertTrue(composerBack.waitForExistence(timeout: 5))
+        composerBack.tap()
+
+        XCTAssertTrue(
+            app.navigationBars["Library"].waitForExistence(timeout: 5)
+        )
+        let reviewedArticle = app.buttons[
+            "library.open.swift.value-semantics"
+        ]
+        XCTAssertTrue(scrollToHittable(reviewedArticle, in: app))
+    }
+
+    @MainActor
+    func testGeneratedLearningReadersSupportAccessibilityXXXL() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--ui-testing",
+            "--app-shell-scenario=ready",
+            "--learning-studio-scenario=empty",
+            "--source-library-scenario=seeded-pdf",
+            "-AppleInterfaceStyle",
+            "Dark",
+            "-UIPreferredContentSizeCategoryName",
+            "UICTContentSizeCategoryAccessibilityXXXL",
+            "-UIAccessibilityDarkerSystemColorsEnabled",
+            "YES",
+            "-UIAccessibilityReduceMotionEnabled",
+            "YES",
+        ]
+
+        app.launch()
+        let generate = openGeneratedComposer(
+            in: app,
+            topic: "page provenance"
+        )
+        XCTAssertTrue(waitForEnabled(generate))
+        generate.tap()
+
+        let openArticle = app.buttons[
+            "generated-learning.open-article"
+        ]
+        XCTAssertTrue(scrollToHittable(openArticle, in: app))
+        openArticle.tap()
+        XCTAssertTrue(
+            app.descendants(matching: .any)[
+                "generated-article.reader"
+            ].waitForExistence(timeout: 5)
+        )
+        let articleScreenshot = XCTAttachment(
+            screenshot: app.screenshot()
+        )
+        articleScreenshot.name =
+            "Generated article dark accessibility XXXL"
+        articleScreenshot.lifetime = .keepAlways
+        add(articleScreenshot)
+
+        let openQuiz = app.buttons["generated-article.open-quiz"]
+        XCTAssertTrue(scrollToHittable(openQuiz, in: app))
+        openQuiz.tap()
+        XCTAssertTrue(
+            app.descendants(matching: .any)["generated-quiz.player"]
+                .waitForExistence(timeout: 5)
+        )
+        let quizScreenshot = XCTAttachment(screenshot: app.screenshot())
+        quizScreenshot.name = "Generated quiz dark accessibility XXXL"
+        quizScreenshot.lifetime = .keepAlways
+        add(quizScreenshot)
+    }
+
+    @MainActor
+    func testGeneratedLearningFromMarkdownRegeneratesAndOpensExactCitation()
+        throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--ui-testing",
+            "--app-shell-scenario=ready",
+            "--learning-studio-scenario=empty",
+            "--source-library-scenario=seeded",
+        ]
+
+        app.launch()
+        let generate = openGeneratedComposer(
+            in: app,
+            topic: "actor isolation"
+        )
+        XCTAssertTrue(waitForEnabled(generate))
+        generate.tap()
+
+        XCTAssertTrue(
+            app.descendants(matching: .any)[
+                "generated-learning.status.generated"
+            ].waitForExistence(timeout: 5)
+        )
+        for _ in 0..<6 where !generate.isHittable {
+            app.swipeDown()
+        }
+        XCTAssertTrue(generate.isHittable)
+        XCTAssertTrue(waitForEnabled(generate))
+        generate.tap()
+        XCTAssertTrue(waitForEnabled(generate))
+        XCTAssertTrue(
+            app.descendants(matching: .any)[
+                "generated-learning.status.generated"
+            ].waitForExistence(timeout: 5)
+        )
+
+        returnToNavigationRoot("Library", in: app)
+        let generatedRows = app.buttons.matching(
+            NSPredicate(
+                format: "identifier BEGINSWITH %@",
+                "generated-article.open."
+            )
+        )
+        XCTAssertTrue(
+            scrollToExistence(generatedRows.firstMatch, in: app)
+        )
+        XCTAssertEqual(generatedRows.count, 2)
+
+        app.tabBars.buttons["Challenges"].tap()
+        let quizRows = app.buttons.matching(
+            NSPredicate(
+                format: "identifier BEGINSWITH %@",
+                "generated-quiz.open."
+            )
+        )
+        XCTAssertTrue(scrollToHittable(quizRows.firstMatch, in: app))
+        XCTAssertEqual(quizRows.count, 2)
+        quizRows.firstMatch.tap()
+
+        let citation = app.buttons[
+            "generated-quiz.citation.source-card-1"
+        ]
+        XCTAssertTrue(scrollToHittable(citation, in: app))
+        citation.tap()
+        XCTAssertTrue(
+            app.staticTexts["Exact stored passage"]
+                .waitForExistence(timeout: 5)
+        )
+        XCTAssertTrue(
+            app.staticTexts["Actor isolation"]
+                .waitForExistence(timeout: 5)
+        )
+    }
+
+    @MainActor
+    func testGeneratedLearningHistoryRestoresAcrossRelaunch() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--ui-testing",
+            "--app-shell-scenario=ready",
+            "--learning-studio-scenario=live",
+            "--reset-ui-testing-learning-progress",
+            "--source-library-scenario=seeded",
+            "--generated-learning-scenario=persistent",
+            "--reset-ui-testing-generated-learning",
+        ]
+
+        app.launch()
+        let generate = openGeneratedComposer(
+            in: app,
+            topic: "actor isolation"
+        )
+        XCTAssertTrue(waitForEnabled(generate))
+        generate.tap()
+        XCTAssertTrue(
+            app.descendants(matching: .any)[
+                "generated-learning.status.generated"
+            ].waitForExistence(timeout: 5)
+        )
+
+        let openArticle = app.buttons[
+            "generated-learning.open-article"
+        ]
+        XCTAssertTrue(scrollToHittable(openArticle, in: app))
+        openArticle.tap()
+        let markRead = app.buttons["generated-article.mark-read"]
+        XCTAssertTrue(scrollToHittable(markRead, in: app))
+        markRead.tap()
+        let readSaved = XCTNSPredicateExpectation(
+            predicate: NSPredicate(
+                format: "label == %@",
+                "Generated article read"
+            ),
+            object: markRead
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [readSaved], timeout: 5),
+            .completed
+        )
+
+        let openQuiz = app.buttons["generated-article.open-quiz"]
+        XCTAssertTrue(scrollToHittable(openQuiz, in: app))
+        openQuiz.tap()
+        let firstChoice = app.buttons[
+            "generated-quiz.choice.choice-1"
+        ]
+        XCTAssertTrue(firstChoice.waitForExistence(timeout: 5))
+        firstChoice.tap()
+        app.buttons["generated-quiz.submit"].tap()
+        let feedback = app.descendants(matching: .any)[
+            "generated-quiz.feedback"
+        ]
+        XCTAssertTrue(feedback.waitForExistence(timeout: 5))
+        let attemptSaved = XCTNSPredicateExpectation(
+            predicate: NSPredicate(
+                format: "value CONTAINS %@",
+                "Attempt saved as activity evidence."
+            ),
+            object: feedback
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [attemptSaved], timeout: 5),
+            .completed
+        )
+
+        app.terminate()
+        app.launchArguments = [
+            "--ui-testing",
+            "--app-shell-scenario=ready",
+            "--learning-studio-scenario=live",
+            "--source-library-scenario=seeded",
+            "--generated-learning-scenario=persistent",
+        ]
+        app.launch()
+        app.tabBars.buttons["Library"].tap()
+
+        let restoredArticle = app.buttons.matching(
+            NSPredicate(
+                format: "identifier BEGINSWITH %@",
+                "generated-article.open."
+            )
+        ).firstMatch
+        XCTAssertTrue(scrollToHittable(restoredArticle, in: app))
+        let articleReadRestored = XCTNSPredicateExpectation(
+            predicate: NSPredicate(
+                format: "value CONTAINS %@",
+                "Read"
+            ),
+            object: restoredArticle
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [articleReadRestored], timeout: 5),
+            .completed
+        )
+
+        app.tabBars.buttons["Challenges"].tap()
+        let restoredQuiz = app.buttons.matching(
+            NSPredicate(
+                format: "identifier BEGINSWITH %@",
+                "generated-quiz.open."
+            )
+        ).firstMatch
+        XCTAssertTrue(scrollToHittable(restoredQuiz, in: app))
+        let answerKeyMatchRestored = XCTNSPredicateExpectation(
+            predicate: NSPredicate(
+                format: "value CONTAINS %@",
+                "Matched"
+            ),
+            object: restoredQuiz
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(
+                for: [answerKeyMatchRestored],
+                timeout: 5
+            ),
+            .completed
+        )
+
+        app.tabBars.buttons["Progress"].tap()
+        let attempts = app.descendants(matching: .any)[
+            "progress.attempts"
+        ]
+        let correctAnswers = app.descendants(matching: .any)[
+            "progress.correct-answers"
+        ]
+        XCTAssertTrue(attempts.waitForExistence(timeout: 5))
+        XCTAssertEqual(attempts.value as? String, "0")
+        XCTAssertEqual(correctAnswers.value as? String, "0")
+        let experimentalAttempt = app.descendants(matching: .any)
+            .matching(
+                NSPredicate(
+                    format: "identifier BEGINSWITH %@",
+                    "progress.attempt."
+                )
+            )
+            .firstMatch
+        XCTAssertTrue(scrollToExistence(experimentalAttempt, in: app))
+        let restoredExperimentalLabel = XCTNSPredicateExpectation(
+            predicate: NSPredicate(
+                format: "label CONTAINS %@",
+                "Matches the generated answer key"
+            ),
+            object: experimentalAttempt
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(
+                for: [restoredExperimentalLabel],
+                timeout: 5
+            ),
+            .completed
+        )
+    }
+
+    @MainActor
+    func testGeneratedLearningUnavailableDisablesGeneration() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--ui-testing",
+            "--app-shell-scenario=ready",
+            "--source-library-scenario=seeded",
+            "--generated-learning-scenario=unavailable",
+        ]
+
+        app.launch()
+        let generate = openGeneratedComposer(
+            in: app,
+            topic: "actor isolation"
+        )
+        XCTAssertTrue(
+            app.descendants(matching: .any)[
+                "generated-learning.status.unavailable"
+            ].waitForExistence(timeout: 5)
+        )
+        XCTAssertFalse(generate.isEnabled)
+        let fallback = app.buttons["generated-learning.fallback"]
+        XCTAssertTrue(scrollToHittable(fallback, in: app))
+        fallback.tap()
+        XCTAssertTrue(
+            app.descendants(matching: .any)["library.screen"]
+                .waitForExistence(timeout: 5)
+        )
+        let reviewedArticle = app.buttons.matching(
+            NSPredicate(
+                format: "identifier BEGINSWITH %@",
+                "library.open."
+            )
+        ).firstMatch
+        XCTAssertTrue(scrollToHittable(reviewedArticle, in: app))
+    }
+
+    @MainActor
+    func testGeneratedLearningRejectsUncitedCandidate() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--ui-testing",
+            "--app-shell-scenario=ready",
+            "--source-library-scenario=seeded",
+            "--generated-learning-scenario=rejected",
+        ]
+
+        app.launch()
+        let generate = openGeneratedComposer(
+            in: app,
+            topic: "actor isolation"
+        )
+        XCTAssertTrue(waitForEnabled(generate))
+        generate.tap()
+
+        XCTAssertTrue(
+            app.descendants(matching: .any)[
+                "generated-learning.status.rejected"
+            ].waitForExistence(timeout: 5)
+        )
+        XCTAssertFalse(
+            app.buttons["generated-learning.open-article"].exists
+        )
+    }
+
+    @MainActor
+    func testGeneratedLearningCancellationDrainsBeforeRetry() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--ui-testing",
+            "--app-shell-scenario=ready",
+            "--source-library-scenario=seeded",
+            "--generated-learning-scenario=delayed",
+        ]
+
+        app.launch()
+        let generate = openGeneratedComposer(
+            in: app,
+            topic: "actor isolation"
+        )
+        XCTAssertTrue(waitForEnabled(generate))
+        generate.tap()
+
+        let cancel = app.buttons["generated-learning.cancel"]
+        XCTAssertTrue(cancel.waitForExistence(timeout: 5))
+        cancel.tap()
+        XCTAssertTrue(
+            app.descendants(matching: .any)[
+                "generated-learning.cancelling"
+            ].waitForExistence(timeout: 1)
+        )
+        XCTAssertFalse(
+            app.buttons["generated-learning.generate"].exists,
+            "A second request must remain unavailable while cancellation drains."
+        )
+        XCTAssertTrue(
+            app.descendants(matching: .any)[
+                "generated-learning.status.cancelled"
+            ].waitForExistence(timeout: 5)
+        )
+        XCTAssertTrue(waitForEnabled(generate))
+        XCTAssertFalse(
+            app.buttons["generated-learning.open-article"].exists
+        )
+
+        generate.tap()
+        XCTAssertTrue(
+            app.descendants(matching: .any)[
+                "generated-learning.status.generated"
+            ].waitForExistence(timeout: 5)
+        )
+    }
+
+    @MainActor
+    func testGeneratedLearningFinalizationCannotBeCancelledOrReplaced()
+        throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--ui-testing",
+            "--app-shell-scenario=ready",
+            "--source-library-scenario=seeded",
+            "--generated-learning-scenario=finalizing",
+        ]
+
+        app.launch()
+        let generate = openGeneratedComposer(
+            in: app,
+            topic: "actor isolation"
+        )
+        XCTAssertTrue(waitForEnabled(generate))
+        generate.tap()
+
+        XCTAssertTrue(
+            app.descendants(matching: .any)[
+                "generated-learning.status.finalizing"
+            ].waitForExistence(timeout: 5)
+        )
+        XCTAssertFalse(app.buttons["generated-learning.cancel"].exists)
+        XCTAssertFalse(app.buttons["generated-learning.generate"].exists)
+        XCTAssertTrue(
+            app.descendants(matching: .any)[
+                "generated-learning.status.generated"
+            ].waitForExistence(timeout: 5)
+        )
+    }
+
+    @MainActor
+    func testGeneratedLearningStorageRetryRestoresReadyState() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--ui-testing",
+            "--app-shell-scenario=ready",
+            "--source-library-scenario=seeded",
+            "--generated-learning-scenario=storage-retry",
+        ]
+
+        app.launch()
+        _ = openGeneratedComposer(in: app, topic: "actor isolation")
+        XCTAssertTrue(
+            app.descendants(matching: .any)[
+                "generated-learning.status.storage-unavailable"
+            ].waitForExistence(timeout: 5)
+        )
+        let retry = app.buttons["generated-learning.retry-storage"]
+        XCTAssertTrue(retry.waitForExistence(timeout: 5))
+        retry.tap()
+        XCTAssertTrue(
+            app.descendants(matching: .any)[
+                "generated-learning.status.ready"
+            ].waitForExistence(timeout: 5)
+        )
+    }
+
+    @MainActor
+    func testGeneratedLearningInsufficientEvidenceKeepsFallback() throws {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--ui-testing",
+            "--app-shell-scenario=ready",
+            "--source-library-scenario=seeded",
+        ]
+
+        app.launch()
+        let generate = openGeneratedComposer(
+            in: app,
+            topic: "nonexistentlexeme"
+        )
+        XCTAssertTrue(waitForEnabled(generate))
+        generate.tap()
+        XCTAssertTrue(
+            app.descendants(matching: .any)[
+                "generated-learning.status.failed"
+            ].waitForExistence(timeout: 5)
+        )
+        XCTAssertTrue(app.buttons["generated-learning.fallback"].exists)
+    }
+
+    @MainActor
     func testImportedSourceOpensExactCitationAndDeletes() throws {
         let app = XCUIApplication()
         app.launchArguments = [
@@ -965,5 +1720,110 @@ final class DailySwiftUITests: XCTestCase {
             .completed,
             "The UI must not continue before the attempt is durable."
         )
+    }
+
+    @MainActor
+    private func openGeneratedComposer(
+        in app: XCUIApplication,
+        topic: String
+    ) -> XCUIElement {
+        app.tabBars.buttons["Library"].tap()
+        XCTAssertTrue(
+            app.navigationBars["Library"].waitForExistence(timeout: 5)
+        )
+        let openComposer = app.buttons[
+            "generated-learning.open-composer"
+        ]
+        XCTAssertTrue(scrollToHittable(openComposer, in: app))
+        openComposer.tap()
+        XCTAssertTrue(
+            app.descendants(matching: .any)[
+                "generated-learning.composer"
+            ].waitForExistence(timeout: 5)
+        )
+        let topicField = app.descendants(matching: .any)[
+            "generated-learning.topic"
+        ]
+        XCTAssertTrue(topicField.waitForExistence(timeout: 5))
+        topicField.tap()
+        topicField.typeText(topic)
+        let generate = app.buttons["generated-learning.generate"]
+        XCTAssertTrue(scrollToExistence(generate, in: app))
+        return generate
+    }
+
+    @MainActor
+    private func waitForEnabled(
+        _ element: XCUIElement,
+        timeout: TimeInterval = 5
+    ) -> Bool {
+        let expectation = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "isEnabled == true"),
+            object: element
+        )
+        return XCTWaiter.wait(
+            for: [expectation],
+            timeout: timeout
+        ) == .completed
+    }
+
+    @MainActor
+    private func returnToNavigationRoot(
+        _ title: String,
+        in app: XCUIApplication
+    ) {
+        if app.navigationBars[title].waitForExistence(timeout: 1) {
+            return
+        }
+        for _ in 0..<6 {
+            let backButton = app.navigationBars.buttons.firstMatch
+            guard backButton.waitForExistence(timeout: 1) else {
+                break
+            }
+            backButton.tap()
+            if app.navigationBars[title].waitForExistence(timeout: 1) {
+                return
+            }
+        }
+        XCTAssertTrue(
+            app.navigationBars[title].exists,
+            "Expected to return to the \(title) root."
+        )
+    }
+
+    @MainActor
+    private func scrollToHittable(
+        _ element: XCUIElement,
+        in app: XCUIApplication,
+        maximumSwipes: Int = 8
+    ) -> Bool {
+        if element.waitForExistence(timeout: 2), element.isHittable {
+            return true
+        }
+        for _ in 0..<maximumSwipes {
+            app.swipeUp()
+            if element.waitForExistence(timeout: 0.5), element.isHittable {
+                return true
+            }
+        }
+        return element.isHittable
+    }
+
+    @MainActor
+    private func scrollToExistence(
+        _ element: XCUIElement,
+        in app: XCUIApplication,
+        maximumSwipes: Int = 8
+    ) -> Bool {
+        if element.waitForExistence(timeout: 2) {
+            return true
+        }
+        for _ in 0..<maximumSwipes {
+            app.swipeUp()
+            if element.waitForExistence(timeout: 0.5) {
+                return true
+            }
+        }
+        return element.exists
     }
 }

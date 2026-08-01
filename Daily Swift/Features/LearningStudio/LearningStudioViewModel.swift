@@ -311,6 +311,43 @@ final class LearningStudioViewModel {
         router.openChallenge(challengeID)
     }
 
+    func openGeneratedLearning() {
+        guard !isResetPending else {
+            return
+        }
+        selectTab(.library)
+        router.openGeneratedLearning()
+    }
+
+    func openGeneratedArticle(_ artifact: GeneratedLearningArtifact) {
+        guard !isResetPending else {
+            return
+        }
+        router.openGeneratedArticle(artifact.id)
+        var activity = projectedSnapshot.activity(for: artifact.articleID)
+        activity.lastOpenedAt = now()
+        var preferences = projectedSnapshot.preferences
+        preferences.selectedTabIdentifier =
+            LearningStudioTab.library.rawValue
+        persist(
+            .openArticle(
+                activity: activity,
+                preferences: preferences
+            ),
+            operation: .updateArticleActivity,
+            mode: sessionMode,
+            appliesOptimistically: true
+        )
+    }
+
+    func openGeneratedQuiz(_ artifactID: UUID) {
+        guard !isResetPending else {
+            return
+        }
+        selectTab(.challenges)
+        router.openGeneratedQuiz(artifactID)
+    }
+
     func openPreferences() {
         guard !isResetPending else {
             return
@@ -369,6 +406,74 @@ final class LearningStudioViewModel {
         activity.lastOpenedAt = activity.lastOpenedAt ?? now()
         activity.completedAt = isRead ? (activity.completedAt ?? now()) : nil
         updateArticleActivity(activity)
+    }
+
+    func markGeneratedArticleRead(
+        _ articleID: String,
+        isRead: Bool
+    ) {
+        guard !isResetPending else {
+            return
+        }
+        var activity = projectedSnapshot.activity(for: articleID)
+        activity.lastOpenedAt = activity.lastOpenedAt ?? now()
+        activity.completedAt = isRead ? (activity.completedAt ?? now()) : nil
+        updateArticleActivity(activity)
+    }
+
+    func setGeneratedArticleBookmark(
+        _ articleID: String,
+        isBookmarked: Bool
+    ) {
+        guard !isResetPending else {
+            return
+        }
+        var activity = projectedSnapshot.activity(for: articleID)
+        activity.lastOpenedAt = activity.lastOpenedAt ?? now()
+        activity.isBookmarked = isBookmarked
+        updateArticleActivity(activity)
+    }
+
+    @discardableResult
+    func submitGeneratedAnswer(
+        artifact: GeneratedLearningArtifact,
+        selectedChoiceID: String
+    ) -> ChallengeFeedback? {
+        guard !isResetPending,
+              artifact.quiz.choices.contains(where: {
+                  $0.id == selectedChoiceID
+              }) else {
+            return nil
+        }
+        let challengeID = artifact.quizID
+        let matchesAnswerKey = artifact.quiz.answerKeyChoiceID
+            == selectedChoiceID
+        let attempt = ChallengeAttempt(
+            id: makeAttemptID(),
+            challengeID: challengeID,
+            selectedChoiceID: selectedChoiceID,
+            // Generated answer keys are experimental activity, not verified
+            // correctness evidence. The selected choice remains available for
+            // an answer-key comparison while the artifact exists.
+            isCorrect: false,
+            attemptedAt: now()
+        )
+        let feedback = ChallengeFeedback(
+            attemptID: attempt.id,
+            challengeID: challengeID,
+            selectedChoiceID: selectedChoiceID,
+            isCorrect: matchesAnswerKey,
+            explanation: artifact.quiz.explanation,
+            storage: .pending
+        )
+        feedbackByChallengeID[challengeID] = feedback
+        persist(
+            .appendAttempt(attempt),
+            operation: .appendAttempt,
+            mode: sessionMode,
+            appliesOptimistically: true
+        )
+        return feedback
     }
 
     func setBookmark(

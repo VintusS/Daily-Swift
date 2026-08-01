@@ -1,7 +1,8 @@
 # ADR-005: Foundation Models provider abstraction
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-07-27
+**Last amended:** 2026-08-01
 **Owners:** Project maintainers
 
 ## Context
@@ -19,20 +20,22 @@ availability, cancellation, and failure state implicit in SwiftUI views.
 
 The physical-iPhone measurements declared in
 [Packet 000-A evidence](../Feasibility/000-a-structured-local-generation.md)
-have not been run. This record therefore proposes a boundary but does not yet
-accept Foundation Models as the default provider.
+have not been run. On 2026-08-01, the owner explicitly deferred that
+measurement and authorized an experimental production slice. This is a
+sequencing exception, not evidence that the original go or constrained-go
+thresholds passed.
 
-## Proposed decision
+## Decision
 
 Use `StructuredGenerationClient` as the isolated Packet 000-A spike boundary.
 It owns the Foundation Models availability check, combined typed generation
 request, and cancellation needed to measure the feasibility question. Its
 generated response contains both a lesson and a multiple-choice exercise. It is
-not the proposed production protocol and must not spread into feature views.
+not the production protocol and must not spread into feature views.
 
-If the device gate is go or constrained go, place accepted model behavior behind
-a narrow production `LanguageModelProvider` boundary owned by the Knowledge
-Engine. Reserve that name for the production boundary. It exposes:
+Place model behavior behind a narrow production `LanguageModelProvider`
+boundary owned by the Knowledge Engine. Reserve that name for the production
+boundary. It exposes:
 
 - an explicit availability result;
 - a typed generation request whose artifact contract is chosen by the
@@ -40,32 +43,33 @@ Engine. Reserve that name for the production boundary. It exposes:
 - cancellation with a terminal state;
 - stable failure categories suitable for recovery and private metrics.
 
-The spike client, and a future Apple adapter if accepted, perform platform
+The spike client and the experimental production Apple adapter perform platform
 availability checks and schema-constrained generation mapped into typed domain
-artifacts. They do not decide whether content is valid or learner-ready.
+artifacts. Neither decides whether content is valid or learner-ready.
 Schema, citation, source identity, API/version, answer determinism, and
 duplicate validation stay in provider-independent services. Only candidates
 whose nested artifacts pass every applicable validator may cross the
 presentation gate.
 
-The current spike implements only the structural subset: source identity and
+The Packet 000-A spike implements only the structural subset: source identity and
 content hashes, at least one resolvable citation per nested artifact, exact
 requested version tags, unique choice identifiers and normalized text, and one
 referenced correct choice. It does not require every supplied card to be cited:
 an unused input is not missing provenance, and forcing a citation would
 incentivize unsupported attribution. It does not verify semantic API
 correctness, compilation, or semantically equivalent distractors. Those
-candidates remain experimental; a later generated-content trust record must
-define the additional deterministic evidence required for production
-presentation.
+candidates remain experimental. ADR-007 now defines the additional trust,
+presentation, exact-citation, and mastery-exclusion gates for Packet 008; its
+acceptance is not evidence that a particular implementation or hosted run has
+passed those gates.
 
-The adapter treats version metadata and identities as application-owned. It
-stamps requested platform versions, builds a runtime schema whose citation
-range matches the actual source-card count, maps guided citation numbers to
-exact source-card identities, and derives stable choice identities from a
-guided answer index. Unknown citation numbers, missing citations, duplicate
-citations, duplicate answer text, or an invalid answer reference still fail
-closed before presentation.
+The Packet 000-A spike adapter treats version metadata and identities as
+application-owned. It stamps requested platform versions, builds a runtime
+schema whose citation range matches the actual source-card count, maps guided
+citation numbers to exact source-card identities, and derives stable choice
+identities from a guided answer index. Unknown citation numbers, missing
+citations, duplicate citations, duplicate answer text, or an invalid answer
+reference still fail closed before presentation.
 
 Version ownership remains explicit and independent:
 
@@ -78,9 +82,36 @@ Version ownership remains explicit and independent:
 
 Changing one version does not silently change either of the others.
 
+Packet 008's production prompt, candidate-schema, artifact-schema, runtime, and
+source-set identities are separately governed by ADR-011. They must not silently
+reuse or be inferred from these Packet 000-A spike version tags.
+
 The public framework does not expose an exact system-model build identifier.
 The spike therefore records the default provider plus runtime OS version as a
 surrogate label; it must not be presented as the model's exact version.
+
+### Experimental adoption policy
+
+The app-owned boundary and deterministic fallback are accepted. The Apple
+Foundation Models adapter is accepted only as an **experimental, unpromoted**
+provider while physical quality and performance evidence remains unmeasured.
+
+- Generation is foreground-only, explicitly initiated by the learner, serial,
+  bounded to at most four source cards, and cancellable.
+- No automatic, background, bulk, or thermal-sensitive generation is allowed.
+- The interface must never promise device capacity, latency, reliability,
+  energy, memory, or thermal behavior.
+- Availability permits an attempt but does not imply suitability.
+- Rejected, failed, cancelled, or unavailable generation always leaves reviewed
+  deterministic learning available.
+- Content generated from private imports is always labeled
+  `Experimental/User Material` in the current slice and must pass ADR-007's
+  stronger evidence gates before presentation.
+- Model output cannot update mastery or become authoritative curriculum.
+
+This policy permits the owner-directed generated-learning vertical slice while
+preserving the original benchmark as the promotion gate for making the Apple
+adapter a normal/default provider or enabling opportunistic batch generation.
 
 ### Availability mapping
 
@@ -139,10 +170,10 @@ accessibility text sizes and Reduce Motion. Long generation must not block
 deterministic learning. Code-level semantics exist; manual assistive-technology
 verification remains pending in the evidence record.
 
-## Decision gate
+## Provider promotion gate
 
-The final decision remains unselected until the physical-iPhone evidence record
-is complete.
+The benchmark outcome remains unselected because the physical-iPhone evidence
+record is incomplete. The thresholds remain frozen for any future promotion:
 
 - **Go:** at least 90% first-pass validator acceptance across 30 generated
   artifacts; 100% of invalid or uncited results blocked; warm p95 latency at or
@@ -161,9 +192,9 @@ is complete.
   failed subsequent request, or state corruption after cancellation or
   repetition; any critical thermal state; or memory termination.
 
-Until this record is Accepted, production feature work must not depend on the
-Apple adapter. A no-go outcome retains deterministic content and removes or
-isolates experimental model code.
+Until this promotion gate passes, production learning must not require the
+Apple adapter. A future no-go outcome retains deterministic content and removes
+or further isolates experimental model code.
 
 ## Alternatives considered
 
@@ -171,7 +202,7 @@ isolates experimental model code.
 
 This reduces initial indirection but couples UI state to a changing platform
 API, weakens deterministic tests, and makes fallback and stale-response handling
-inconsistent. It is not proposed.
+inconsistent. It is rejected.
 
 ### Treat generated content as ready when typed decoding succeeds
 
@@ -194,8 +225,9 @@ explicit opt-in decision.
 ### Ship deterministic content only
 
 This is the retained fallback and becomes the selected production approach if
-Packet 000-A is no-go. The spike is required before deciding whether to stop
-there.
+Packet 000-A is no-go. The frozen spike remains the promotion evidence needed to
+decide whether the experimental Apple adapter can advance or should be removed;
+it no longer blocks the explicitly authorized Packet 008 experiment.
 
 ## Consequences
 
@@ -218,25 +250,27 @@ there.
 
 ## Verification
 
-Before changing this record to Accepted:
+Before promoting the experimental Apple adapter to the normal/default provider:
 
-1. Complete the simulator/host deterministic tests described in the evidence
-   record.
+1. Complete the deterministic automated coverage described in the evidence
+   record through the hosted `Tests` check. Local validation remains build-only.
 2. Complete all physical-iPhone environment fields and the 30-artifact run
    table.
 3. Record validator acceptance, blocked invalid results, p95 warm latency,
    source-card capacity, cancellation recovery, memory, and thermal results.
-4. Run project hygiene, the signing-independent Debug build, and the focused
-   tests from the active work packet.
+4. Run project hygiene, diff/static review, signing-independent Debug and
+   Release build-only validation, any needed `build-for-testing`, and the exact
+   hosted Project Hygiene, Build, and Tests checks from the active packet.
 5. Select go, constrained go, or no-go without weakening thresholds after seeing
    results.
 
-Device-dependent verification is currently **not run**.
+Device-dependent generation verification is currently **not run**.
 
 The deterministic spike implementation, Debug and Release simulator builds, and
-the 28-test iPhone 17 / iOS 26.5 simulator suite pass. The suite contains 27
-unit tests and one UI smoke test. This evidence validates the proposed seam and
-presentation gate only; it does not accept the provider.
+the historical 28-test iPhone 17 / iOS 26.5 simulator suite passed. The suite
+contained 27 unit tests and one UI smoke test. This evidence validates the
+app-owned seam and deterministic presentation checks only; it does not promote
+the provider. Current automated tests are executed only by GitHub CI.
 
 On 2026-07-30, the Debug measurement harness was extended to represent the
 predeclared warm-up and 30-run schedule, request-size components, privacy-safe
@@ -249,6 +283,11 @@ region, 55% battery, and nominal thermal state before warm-up. The explicit
 environment report maps the default system model and current locale to
 `.available`. The measured generation benchmark remains pending. These are
 readiness facts, not Foundation Models acceptance evidence.
+
+On 2026-08-01, the owner deferred Packet 000-A without selecting go,
+constrained go, or no-go. Acceptance of this record is limited to the app-owned
+boundary, deterministic fallback, and experimental-adapter policy above. It
+does not convert missing device measurements into acceptance evidence.
 
 ## Residual risks
 
