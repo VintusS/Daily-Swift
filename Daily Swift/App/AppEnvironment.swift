@@ -259,7 +259,7 @@ struct AppEnvironment {
                     provider = DeterministicLanguageModelProvider()
                     store = DelayedSaveGeneratedLearningStore(
                         base: InMemoryGeneratedLearningStore(),
-                        delay: .seconds(2)
+                        delay: .seconds(4)
                     )
                 case .providerFailure:
                     provider = DeterministicLanguageModelProvider(

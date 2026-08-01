@@ -96,7 +96,21 @@ struct ChallengesView: View {
                                     )
                                 }
                             } header: {
-                                Text("Generated quizzes")
+                                HStack {
+                                    Text("Generated quizzes")
+                                    Spacer()
+                                    Text(
+                                        "\(visibleGeneratedArtifacts.count)"
+                                    )
+                                }
+                                .accessibilityElement(children: .combine)
+                                .accessibilityLabel("Generated quizzes")
+                                .accessibilityValue(
+                                    "\(visibleGeneratedArtifacts.count)"
+                                )
+                                .accessibilityIdentifier(
+                                    "generated-quizzes.count"
+                                )
                             } footer: {
                                 Text(
                                     "Answer-key matches are recorded as activity only. Generated quizzes are experimental and never update mastery."

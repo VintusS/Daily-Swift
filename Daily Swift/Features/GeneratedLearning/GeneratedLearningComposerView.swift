@@ -21,7 +21,7 @@ struct GeneratedLearningComposerView: View {
             sourceHelpSection
         }
         .listStyle(.insetGrouped)
-        .scrollDismissesKeyboard(.interactively)
+        .scrollDismissesKeyboard(.immediately)
         .navigationTitle("Generate Learning")
         .navigationBarTitleDisplayMode(.inline)
         .task {

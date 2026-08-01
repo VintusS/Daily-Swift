@@ -166,6 +166,9 @@ actor DeterministicCancellationDrainLanguageModelProvider:
     ) async throws -> LanguageModelGeneratedCandidate {
         generationCallCount += 1
         if generationCallCount == 1 {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(50))
+            }
             let drain = Task.detached { [drainDelay] in
                 try? await Task.sleep(for: drainDelay)
             }
