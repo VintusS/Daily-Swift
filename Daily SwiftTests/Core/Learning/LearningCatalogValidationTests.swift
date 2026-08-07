@@ -1,70 +1,28 @@
 import Testing
 @testable import DailySwift
 
-struct SeedCurriculumProviderTests {
-    private let provider = SeedCurriculumProvider()
+struct LearningCatalogValidationTests {
+    private let catalog = LearningCatalogTestFixtures.catalog
 
-    @Test("The project seed is substantial, varied, linked, and valid")
-    func projectSeedIsValid() throws {
-        let catalog = try provider.loadCatalog()
+    @Test("The generated-only production catalog contains no bundled learning")
+    func generatedOnlyCatalogIsEmptyAndValid() throws {
+        let generatedOnly = try LearningCatalog.generatedOnly.validated()
 
-        #expect(catalog.schemaVersion == LearningCatalog.currentSchemaVersion)
-        #expect(catalog.articles.count == 6)
-        #expect(catalog.challenges.count == 8)
-        #expect(catalog.articles.allSatisfy { $0.trust == .projectSeed })
         #expect(
-            Set(catalog.articles.map(\.domain))
-                == Set(LearningDomain.allCases)
+            generatedOnly.schemaVersion
+                == LearningCatalog.currentSchemaVersion
         )
-        #expect(
-            Set(catalog.challenges.map(\.domain))
-                == Set(LearningDomain.allCases)
-        )
-        #expect(
-            Set(catalog.challenges.map(\.kind))
-                == Set(ChallengeKind.allCases)
-        )
-        #expect(
-            LearningDomain.allCases.allSatisfy { domain in
-                catalog.challenges.filter { $0.domain == domain }.count == 2
-            }
-        )
-
-        for article in catalog.articles {
-            let bodyLength = article.sections
-                .map(\.body)
-                .joined()
-                .count
-
-            #expect(article.sections.count >= 3)
-            #expect(article.takeaways.count >= 3)
-            #expect(bodyLength > 500)
-            #expect(article.estimatedMinutes >= 4)
-        }
-
-        for challenge in catalog.challenges {
-            #expect(catalog.article(id: challenge.relatedArticleID) != nil)
-            #expect(
-                challenge.validationCapability == .deterministic
-            )
-            #expect(
-                Set(challenge.choices.map(\.id)).count
-                    == challenge.choices.count
-            )
-        }
-
-        #expect((4...6).contains(catalog.dailyPlan.steps.count))
-        #expect((20...30).contains(catalog.dailyPlan.estimatedMinutes))
+        #expect(generatedOnly.articles.isEmpty)
+        #expect(generatedOnly.challenges.isEmpty)
+        #expect(generatedOnly.dailyPlan.steps.isEmpty)
     }
 
     @Test("Duplicate catalog identities fail validation")
-    func duplicateIdentifiersAreRejected() throws {
-        let seed = try provider.loadCatalog()
-
+    func duplicateIdentifiersAreRejected() {
         let duplicateArticleCatalog = LearningCatalog(
-            articles: seed.articles + [seed.articles[0]],
-            challenges: seed.challenges,
-            dailyPlan: seed.dailyPlan
+            articles: catalog.articles + [catalog.articles[0]],
+            challenges: catalog.challenges,
+            dailyPlan: catalog.dailyPlan
         )
         #expect(
             validationFailure(in: duplicateArticleCatalog)
@@ -72,9 +30,9 @@ struct SeedCurriculumProviderTests {
         )
 
         let duplicateChallengeCatalog = LearningCatalog(
-            articles: seed.articles,
-            challenges: seed.challenges + [seed.challenges[0]],
-            dailyPlan: seed.dailyPlan
+            articles: catalog.articles,
+            challenges: catalog.challenges + [catalog.challenges[0]],
+            dailyPlan: catalog.dailyPlan
         )
         #expect(
             validationFailure(in: duplicateChallengeCatalog)
@@ -82,15 +40,15 @@ struct SeedCurriculumProviderTests {
         )
 
         let duplicateStepPlan = DailyLearningPlan(
-            id: seed.dailyPlan.id,
-            title: seed.dailyPlan.title,
-            focus: seed.dailyPlan.focus,
-            summary: seed.dailyPlan.summary,
-            steps: seed.dailyPlan.steps + [seed.dailyPlan.steps[0]]
+            id: catalog.dailyPlan.id,
+            title: catalog.dailyPlan.title,
+            focus: catalog.dailyPlan.focus,
+            summary: catalog.dailyPlan.summary,
+            steps: catalog.dailyPlan.steps + [catalog.dailyPlan.steps[0]]
         )
         let duplicateStepCatalog = LearningCatalog(
-            articles: seed.articles,
-            challenges: seed.challenges,
+            articles: catalog.articles,
+            challenges: catalog.challenges,
             dailyPlan: duplicateStepPlan
         )
         #expect(
@@ -100,17 +58,16 @@ struct SeedCurriculumProviderTests {
     }
 
     @Test("Dangling challenge and daily-plan references fail validation")
-    func danglingReferencesAreRejected() throws {
-        let seed = try provider.loadCatalog()
-        let challenge = seed.challenges[0]
+    func danglingReferencesAreRejected() {
+        let challenge = catalog.challenges[0]
         let danglingChallenge = replacing(
             challenge,
             relatedArticleID: "missing.article"
         )
         let danglingChallengeCatalog = LearningCatalog(
-            articles: seed.articles,
-            challenges: [danglingChallenge] + seed.challenges.dropFirst(),
-            dailyPlan: seed.dailyPlan
+            articles: catalog.articles,
+            challenges: [danglingChallenge],
+            dailyPlan: catalog.dailyPlan
         )
 
         #expect(
@@ -122,22 +79,22 @@ struct SeedCurriculumProviderTests {
         )
 
         let unresolvedStep = DailyLearningStep(
-            id: "daily.unresolved",
+            id: "fixture.unresolved",
             title: "Unavailable challenge",
             detail: "This fixture deliberately points to missing content.",
-            estimatedMinutes: 3,
+            estimatedMinutes: 1,
             content: .challenge("missing.challenge")
         )
         let unresolvedPlan = DailyLearningPlan(
-            id: seed.dailyPlan.id,
-            title: seed.dailyPlan.title,
-            focus: seed.dailyPlan.focus,
-            summary: seed.dailyPlan.summary,
+            id: catalog.dailyPlan.id,
+            title: catalog.dailyPlan.title,
+            focus: catalog.dailyPlan.focus,
+            summary: catalog.dailyPlan.summary,
             steps: [unresolvedStep]
         )
         let unresolvedPlanCatalog = LearningCatalog(
-            articles: seed.articles,
-            challenges: seed.challenges,
+            articles: catalog.articles,
+            challenges: catalog.challenges,
             dailyPlan: unresolvedPlan
         )
 
@@ -148,18 +105,17 @@ struct SeedCurriculumProviderTests {
     }
 
     @Test("Insufficient and ambiguous choices fail validation")
-    func invalidChoicesAreRejected() throws {
-        let seed = try provider.loadCatalog()
-        let challenge = seed.challenges[0]
+    func invalidChoicesAreRejected() {
+        let challenge = catalog.challenges[0]
         let singleChoice = replacing(
             challenge,
             choices: [challenge.choices[0]],
             correctChoiceID: challenge.choices[0].id
         )
         let singleChoiceCatalog = LearningCatalog(
-            articles: seed.articles,
-            challenges: [singleChoice] + seed.challenges.dropFirst(),
-            dailyPlan: seed.dailyPlan
+            articles: catalog.articles,
+            challenges: [singleChoice],
+            dailyPlan: catalog.dailyPlan
         )
 
         #expect(
@@ -172,15 +128,14 @@ struct SeedCurriculumProviderTests {
             choices: [
                 challenge.choices[0],
                 challenge.choices[0],
-                challenge.choices[1]
+                challenge.choices[1],
             ],
             correctChoiceID: challenge.choices[0].id
         )
         let ambiguousChoiceCatalog = LearningCatalog(
-            articles: seed.articles,
-            challenges: [duplicatedCorrectChoice]
-                + seed.challenges.dropFirst(),
-            dailyPlan: seed.dailyPlan
+            articles: catalog.articles,
+            challenges: [duplicatedCorrectChoice],
+            dailyPlan: catalog.dailyPlan
         )
 
         #expect(

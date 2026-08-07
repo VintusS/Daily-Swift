@@ -63,7 +63,7 @@ struct ReadyStudioView: View {
                         StudioCommitmentRow(
                             symbol: "wifi.slash",
                             title: "Useful offline",
-                            detail: "Core learning will retain a deterministic path when services are unavailable."
+                            detail: "Imported sources and saved generated learning remain readable when generation is unavailable."
                         )
                         StudioCommitmentRow(
                             symbol: "lock.shield",
@@ -73,7 +73,7 @@ struct ReadyStudioView: View {
                         StudioCommitmentRow(
                             symbol: "scope",
                             title: "Honest evidence",
-                            detail: "The interface will distinguish reviewed, generated, validated, and compiled results."
+                            detail: "The interface distinguishes generated, structurally validated, and compiled results."
                         )
                     }
                     .padding(StudioTokens.Spacing.large)

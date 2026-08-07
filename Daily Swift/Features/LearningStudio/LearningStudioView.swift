@@ -88,10 +88,17 @@ struct LearningStudioView: View {
         TabView(selection: selectedTab) {
             NavigationStack(path: path(for: .today)) {
                 TodayView(
-                    catalog: viewModel.catalog,
-                    evidence: viewModel.evidence,
-                    onContinue: openNextDailyStep,
-                    onOpenStep: open,
+                    snapshot: viewModel.snapshot,
+                    generatedArtifacts:
+                        generatedLearningViewModel.artifacts,
+                    generatedLearningState:
+                        generatedLearningViewModel.state,
+                    onGenerateLearning:
+                        viewModel.openGeneratedLearning,
+                    onOpenGeneratedArticle:
+                        viewModel.openGeneratedArticle,
+                    onOpenGeneratedQuiz:
+                        viewModel.openGeneratedQuiz,
                     onPrivacy: onPrivacy
                 )
                 .navigationDestination(
@@ -110,12 +117,14 @@ struct LearningStudioView: View {
 
             NavigationStack(path: path(for: .challenges)) {
                 ChallengesView(
-                    catalog: viewModel.catalog,
-                    evidence: viewModel.evidence,
                     snapshot: viewModel.snapshot,
                     generatedArtifacts:
                         generatedLearningViewModel.artifacts,
-                    onOpenChallenge: viewModel.openChallenge,
+                    generatedLearningState:
+                        generatedLearningViewModel.state,
+                    onGenerateLearning:
+                        viewModel.openGeneratedLearning,
+                    onRetryGeneratedHistory: retryGeneratedHistory,
                     onOpenGeneratedQuiz:
                         viewModel.openGeneratedQuiz
                 )
@@ -135,16 +144,17 @@ struct LearningStudioView: View {
 
             NavigationStack(path: path(for: .library)) {
                 LibraryView(
-                    catalog: viewModel.catalog,
                     snapshot: viewModel.snapshot,
                     generatedArtifacts:
                         generatedLearningViewModel.artifacts,
+                    generatedLearningState:
+                        generatedLearningViewModel.state,
                     sourceLibraryViewModel: sourceLibraryViewModel,
                     sourceRetrievalViewModel:
                         sourceRetrievalViewModel,
-                    onOpenArticle: viewModel.openArticle,
                     onGenerateLearning:
                         viewModel.openGeneratedLearning,
+                    onRetryGeneratedHistory: retryGeneratedHistory,
                     onOpenGeneratedArticle:
                         viewModel.openGeneratedArticle,
                     onOpenSource: viewModel.router.openSource,
@@ -166,9 +176,7 @@ struct LearningStudioView: View {
 
             NavigationStack(path: path(for: .progress)) {
                 LearningProgressView(
-                    catalog: viewModel.catalog,
                     snapshot: viewModel.snapshot,
-                    evidence: viewModel.evidence,
                     generatedArtifacts:
                         generatedLearningViewModel.artifacts,
                     isTemporarySession:
@@ -334,7 +342,7 @@ struct LearningStudioView: View {
                 documents: sourceLibraryViewModel.documents,
                 onOpenArticle: viewModel.openGeneratedArticle,
                 onOpenQuiz: viewModel.openGeneratedQuiz,
-                onOpenReviewedLearning:
+                onReturnToLibrary:
                     viewModel.router.returnToLibraryRoot
             )
 
@@ -467,20 +475,9 @@ struct LearningStudioView: View {
         }
     }
 
-    private func openNextDailyStep() {
-        guard let step = viewModel.nextDailyStep
-            ?? viewModel.dailyPlan.steps.first else {
-            return
-        }
-        open(step)
-    }
-
-    private func open(_ step: DailyLearningStep) {
-        switch step.content {
-        case let .article(identifier):
-            viewModel.openArticle(identifier)
-        case let .challenge(identifier):
-            viewModel.openChallenge(identifier)
+    private func retryGeneratedHistory() {
+        Task {
+            await generatedLearningViewModel.reload()
         }
     }
 
@@ -519,7 +516,7 @@ private struct TemporaryLearningSessionBanner: View {
                     .font(StudioTokens.Typography.sectionHeading)
 
                 Text(
-                    "You can read and practice, but this session disappears when the app closes."
+                    "You can read saved generated learning and practice, but new activity in this session disappears when the app closes."
                 )
                 .font(StudioTokens.Typography.supporting)
                 .foregroundStyle(StudioTokens.Color.secondaryText)
@@ -541,7 +538,7 @@ private struct MissingLearningContentView: View {
             "This \(kind) is no longer available",
             systemImage: "questionmark.folder",
             description: Text(
-                "Return to the tab root to choose current bundled content."
+                "Return to the tab root to choose current generated learning or an imported source."
             )
         )
         .navigationTitle("Unavailable")
@@ -604,7 +601,7 @@ private struct LearningStoreRecoveryView: View {
                         }
                         .buttonStyle(StudioSecondaryButtonStyle())
                         .accessibilityHint(
-                            "Opens all bundled learning content without saving this session."
+                            "Opens saved generated learning and imported sources without saving new activity in this session."
                         )
                         .accessibilityIdentifier(
                             "learning-studio.continue-temporarily"

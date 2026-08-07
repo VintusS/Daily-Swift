@@ -25,6 +25,11 @@ measurement and authorized an experimental production slice. This is a
 sequencing exception, not evidence that the original go or constrained-go
 thresholds passed.
 
+After reviewing the first production UI, the owner further directed that
+learner-facing articles and quizzes be generated-only. This supersedes the
+earlier seed-content presentation fallback but does not promote the Apple
+adapter or turn missing physical-device evidence into an accepted result.
+
 ## Decision
 
 Use `StructuredGenerationClient` as the isolated Packet 000-A spike boundary.
@@ -92,9 +97,10 @@ surrogate label; it must not be presented as the model's exact version.
 
 ### Experimental adoption policy
 
-The app-owned boundary and deterministic fallback are accepted. The Apple
-Foundation Models adapter is accepted only as an **experimental, unpromoted**
-provider while physical quality and performance evidence remains unmeasured.
+The app-owned boundary and generated-only operational fallback are accepted.
+The Apple Foundation Models adapter is accepted only as an **experimental,
+unpromoted** provider while physical quality and performance evidence remains
+unmeasured.
 
 - Generation is foreground-only, explicitly initiated by the learner, serial,
   bounded to at most four source cards, and cancellable.
@@ -102,8 +108,9 @@ provider while physical quality and performance evidence remains unmeasured.
 - The interface must never promise device capacity, latency, reliability,
   energy, memory, or thermal behavior.
 - Availability permits an attempt but does not imply suitability.
-- Rejected, failed, cancelled, or unavailable generation always leaves reviewed
-  deterministic learning available.
+- Rejected, failed, cancelled, or unavailable generation preserves accepted
+  generated history and imported-source reading. If neither exists, the app
+  presents an explicit unavailable or empty state rather than authored content.
 - Content generated from private imports is always labeled
   `Experimental/User Material` in the current slice and must pass ADR-007's
   stronger evidence gates before presentation.
@@ -120,31 +127,35 @@ The locally inspected SDK states map as follows:
 | Framework or adapter result | Application value | Behavior |
 |---|---|---|
 | `available` | `.available` | Allow an explicit generation request. |
-| `unavailable(deviceNotEligible)` | `.unavailable(.deviceNotSupported)` | Explain the limitation and use deterministic content. |
-| `unavailable(appleIntelligenceNotEnabled)` | `.unavailable(.intelligenceDisabled)` | Explain the dependency and use deterministic content. |
-| `unavailable(modelNotReady)` | `.unavailable(.modelNotReady)` | Preserve work, allow retry later, and use deterministic content now. |
-| Separately detected locale or region restriction | `.unavailable(.languageOrRegionUnsupported)` | Explain the restriction and use deterministic content. |
-| Unmapped future or unexpected availability result | `.unavailable(.other)` | Fail closed, retain a private diagnostic category, and use deterministic content. |
+| `unavailable(deviceNotEligible)` | `.unavailable(.deviceNotSupported)` | Explain the limitation; keep saved generated history and source reading available. |
+| `unavailable(appleIntelligenceNotEnabled)` | `.unavailable(.intelligenceDisabled)` | Explain the dependency; keep saved generated history and source reading available. |
+| `unavailable(modelNotReady)` | `.unavailable(.modelNotReady)` | Preserve work, allow retry later, and do not substitute authored content. |
+| Separately detected locale or region restriction | `.unavailable(.languageOrRegionUnsupported)` | Explain the restriction and do not substitute authored content. |
+| Unmapped future or unexpected availability result | `.unavailable(.other)` | Fail closed, retain a private diagnostic category, and do not substitute authored content. |
 
 Unexpected generation errors map to a recoverable failure state. Cancellation
 must discard partial presentation state, return the interface to a stable state,
 and allow a subsequent request.
 
-### Deterministic fallback
+### Generated-only operational fallback
 
-A deterministic provider supplies reviewed seed lessons and exercises through
-the same consumer-facing artifact contract. It is not an error screen or a
-temporary test double. It is the required offline product path whenever the
-system model is unavailable, not ready, cancelled, rejected by validators, or
-limited by performance or thermal policy.
+Production does not substitute an authored article or quiz when generation is
+unavailable. Deterministic providers and authored learning fixtures are limited
+to tests, previews, explicitly gated Debug scenarios, and separately accepted
+assessment anchors. The learner-facing fallback consists of previously
+accepted generated history, imported-source reading and search, preservation of
+learner data, an explicit availability explanation, and retry. A fresh
+installation may therefore have no article or quiz until a grounded request
+succeeds. This owner-accepted policy narrows the earlier offline-learning
+promise without promoting the experimental Apple adapter.
 
 ### State ownership
 
 Feature state changes are unidirectional. A main-actor view model owns visible
-idle, checking, ready, generating, content, unavailable, cancelled, and failure
-states. Provider work does not mutate SwiftUI views or persistence directly.
-Cancellation and stale responses are resolved before a candidate can be
-presented.
+idle, empty, checking, ready, generating, history, content, unavailable,
+cancelled, and failure states. Provider work does not mutate SwiftUI views or
+persistence directly. Cancellation and stale responses are resolved before a
+candidate can be presented.
 
 ### Privacy and provenance
 
@@ -161,14 +172,28 @@ presented.
   or learner data.
 - Private diagnostic artifacts are not synced.
 
+### Quality-feedback and training boundary
+
+`LanguageModelProvider` exposes generation, availability, and cancellation; it
+does not expose rating, training, fine-tuning, or model-mutation operations. The
+generated-only Packet 008 completion follow-up does not add a rating interface
+or rating storage. Any future Good or Bad feedback requires a separate work
+packet and accepted persistence/privacy decision; it must remain app-owned,
+must not invoke the provider or alter trust or mastery, and must not be
+described as retraining Apple Intelligence. A future trainable provider, rating
+export, or dataset workflow requires a separate accepted architecture and
+explicit privacy, consent, source-rights, retention, deletion, and
+device-evidence policy.
+
 ### Accessibility
 
-Availability, progress, cancellation, rejection, and fallback must have
-semantic text, ordered focus, and concise VoiceOver announcements. State must
-not rely on color or motion. Status and recovery actions must support
-accessibility text sizes and Reduce Motion. Long generation must not block
-deterministic learning. Code-level semantics exist; manual assistive-technology
-verification remains pending in the evidence record.
+Availability, progress, cancellation, rejection, empty, and fallback states
+must have semantic text, ordered focus, and concise VoiceOver announcements.
+State must not rely on color or motion. Status and recovery actions must support
+accessibility text sizes and Reduce Motion. Long generation must not block saved
+generated history or imported-source reading. Code-level semantics exist;
+manual assistive-technology verification remains pending in the evidence
+record.
 
 ## Provider promotion gate
 
@@ -184,17 +209,20 @@ record is incomplete. The thresholds remain frozen for any future promotion:
   and at or below 45 seconds; only 1–3 practical source cards; stable
   cancellation above 1 second and at or below 3 seconds followed by a
   successful request; or serious but not critical thermal pressure. Generation
-  is limited or scheduled opportunistically, and deterministic lessons remain
-  the default fallback.
+  remains further limited; automatic or opportunistic scheduling still requires
+  a separately accepted policy.
 - **No-go:** below 70% first-pass acceptance; any invalid artifact reaches
   presentation; warm p95 above 45 seconds; no validated result from one bounded
   source card; target-device unavailability; cancellation above 3 seconds, a
   failed subsequent request, or state corruption after cancellation or
   repetition; any critical thermal state; or memory termination.
 
-Until this promotion gate passes, production learning must not require the
-Apple adapter. A future no-go outcome retains deterministic content and removes
-or further isolates experimental model code.
+Until this promotion gate passes, the app may require the experimental Apple
+adapter only for an explicit request for new generated learning. It must not
+claim that the adapter is promoted, universally available, or sufficient for a
+complete offline session. A future no-go outcome keeps saved generated history
+and source reading available, removes or further isolates experimental model
+code, and requires a new product decision for creating additional content.
 
 ## Alternatives considered
 
@@ -213,8 +241,9 @@ validation and a presentation gate remain required.
 ### Require the model for the learning loop
 
 This conflicts with the local-first product promise and excludes unsupported,
-disabled, or not-ready states. Reviewed deterministic lessons remain a
-first-class path.
+disabled, or not-ready states. The owner-directed exception nevertheless allows
+new articles and quizzes to require an available experimental provider, while
+saved generated history and imported-source reading remain first-class paths.
 
 ### Use a cloud provider for the first implementation
 
@@ -224,10 +253,12 @@ explicit opt-in decision.
 
 ### Ship deterministic content only
 
-This is the retained fallback and becomes the selected production approach if
-Packet 000-A is no-go. The frozen spike remains the promotion evidence needed to
-decide whether the experimental Apple adapter can advance or should be removed;
-it no longer blocks the explicitly authorized Packet 008 experiment.
+This was the original learner-facing fallback. The owner rejected it for
+production articles and quizzes after reviewing the first generated-learning
+UI. Deterministic providers and authored artifacts remain necessary for tests,
+previews, Debug scenarios, and separately accepted assessment anchors. The
+frozen spike remains the promotion evidence needed to decide whether the
+experimental Apple adapter can advance or should be removed.
 
 ## Consequences
 
@@ -237,13 +268,16 @@ it no longer blocks the explicitly authorized Packet 008 experiment.
   `StructuredGenerationClient`, and accepted production behavior can remain
   testable through providers and explicit availability states.
 - Validation, provenance, and presentation safety do not depend on one model.
-- The daily learning loop remains useful without generation.
+- Saved generated learning and imported sources remain useful without a new
+  generation request.
 - Platform changes remain contained behind one Knowledge Engine boundary.
 
 ### Negative
 
 - Typed artifacts and failures require explicit cross-boundary mappings.
 - Provider-independent validators add work before generated content is shown.
+- A fresh installation has no learner-facing article or quiz when the provider
+  is unavailable or no grounded request has succeeded.
 - Model, prompt, or provider-candidate-schema updates require the benchmark and
   decision evidence to be revisited.
 - The abstraction must remain narrow to avoid speculative adapters.
@@ -263,6 +297,11 @@ Before promoting the experimental Apple adapter to the normal/default provider:
    hosted Project Hygiene, Build, and Tests checks from the active packet.
 5. Select go, constrained go, or no-go without weakening thresholds after seeing
    results.
+
+Separately verify the generated-only completion follow-up with unavailable,
+empty-history, restored-history, cancelled, rejected, and failed scenarios. No
+scenario may inject a learner-facing seed article or quiz. The completion UI
+must not claim that it collects feedback or trains a model.
 
 Device-dependent generation verification is currently **not run**.
 
@@ -286,8 +325,9 @@ readiness facts, not Foundation Models acceptance evidence.
 
 On 2026-08-01, the owner deferred Packet 000-A without selecting go,
 constrained go, or no-go. Acceptance of this record is limited to the app-owned
-boundary, deterministic fallback, and experimental-adapter policy above. It
-does not convert missing device measurements into acceptance evidence.
+boundary, generated-only operational fallback, and experimental-adapter policy
+above. It does not convert missing device measurements into acceptance
+evidence.
 
 ## Residual risks
 

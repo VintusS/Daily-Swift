@@ -38,13 +38,10 @@ enum LearningDomain: String, CaseIterable, Codable, Hashable, Identifiable, Send
 }
 
 enum LearningContentTrust: String, Codable, Hashable, Sendable {
-    case projectSeed
     case reviewedCore
 
     var label: String {
         switch self {
-        case .projectSeed:
-            "Project Seed"
         case .reviewedCore:
             "Reviewed Core"
         }
@@ -182,6 +179,18 @@ struct DailyLearningPlan: Identifiable, Codable, Hashable, Sendable {
 
 struct LearningCatalog: Codable, Equatable, Sendable {
     static let currentSchemaVersion = 1
+
+    static let generatedOnly = LearningCatalog(
+        articles: [],
+        challenges: [],
+        dailyPlan: DailyLearningPlan(
+            id: "generated-only",
+            title: "",
+            focus: "",
+            summary: "",
+            steps: []
+        )
+    )
 
     let schemaVersion: Int
     let articles: [LearningArticle]

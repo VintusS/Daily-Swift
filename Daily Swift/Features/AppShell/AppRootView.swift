@@ -204,7 +204,7 @@ struct AppRootView: View {
             bootstrapService: InMemoryAppBootstrapService()
         ),
         learningStudioViewModel: LearningStudioViewModel(
-            catalog: SeedCurriculumProvider.catalog,
+            catalog: .generatedOnly,
             store: InMemoryLearningProgressStore()
         ),
         sourceLibraryViewModel: SourceLibraryViewModel(
@@ -223,7 +223,7 @@ struct AppRootView: View {
             )
         ),
         learningStudioViewModel: LearningStudioViewModel(
-            catalog: SeedCurriculumProvider.catalog,
+            catalog: .generatedOnly,
             store: InMemoryLearningProgressStore()
         ),
         sourceLibraryViewModel: SourceLibraryViewModel(
@@ -241,7 +241,7 @@ struct AppRootView: View {
             )
         ),
         learningStudioViewModel: LearningStudioViewModel(
-            catalog: SeedCurriculumProvider.catalog,
+            catalog: .generatedOnly,
             store: InMemoryLearningProgressStore()
         ),
         sourceLibraryViewModel: SourceLibraryViewModel(

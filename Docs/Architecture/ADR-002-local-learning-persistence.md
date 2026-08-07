@@ -2,6 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-07-28
+**Last amended:** 2026-08-01
 **Owners:** Project maintainers
 
 ## Context
@@ -21,15 +22,24 @@ local-only learning slice so the application can be exercised now. This record
 therefore accepts only the local structured-data boundary and does not accept a
 sync design.
 
+After the generated-learning vertical became visible, the owner directed that
+production articles and quizzes be generated-only. The deterministic studio
+remains historical foundation evidence, but its authored article and challenge
+bodies are no longer production catalog data. This amendment changes
+learner-facing content composition; it does not convert generated activity into
+mastery evidence or erase existing learner records.
+
 ## Decision
 
 ### Storage split
 
 - Use SwiftData for small structured learner evidence, article activity, and
   interaction preferences.
-- Keep reviewed seed curriculum immutable in the application bundle/source.
-- Reserve Application Support for future original imports, extracted text,
-  long-form generated content, indexes, and workspaces.
+- Do not keep authored article or quiz bodies in the production application
+  bundle or source. Deterministic examples remain limited to tests, previews,
+  explicitly gated Debug scenarios, and separately accepted assessment anchors.
+- Use Application Support for original imports, extracted text, long-form
+  generated content, indexes, and workspaces.
 - Reserve Keychain for future secrets.
 - Do not configure CloudKit in this record.
 
@@ -74,16 +84,27 @@ Progress is derived from these records. It is not stored or presented as
 mastery, XP, streak, or model confidence. The future mastery decision may
 consume attempt evidence without rewriting its historical truth.
 
+Generated quiz attempts and generated-article activity retain the exclusion
+defined by ADR-007 and ADR-011. Removing the seed catalog does not reclassify
+either legacy seed evidence or generated answer-key matches as correctness.
+
 Correct and incorrect feedback can appear immediately, but its save status is
 bound to the exact attempt UUID. Failed writes cannot increase completed
 challenge, Today, or Progress evidence until an idempotent retry commits.
 
 ### Schema and migration
 
-The learning schema begins at version 1. Stable curriculum identifiers are the
-join boundary between bundled content and learner data. Missing content
+The learning schema begins at version 1. Stable content identifiers are the
+join boundary between presentation artifacts and learner data. Missing content
 identifiers are ignored in projections while the original evidence remains
 available for future migration or export.
+
+The generated-only presentation change requires no SwiftData schema migration.
+Previously saved seed article and challenge identifiers become missing content
+identifiers: keep them dormant, exclude them from every learner-facing count,
+route, and progress projection, and do not delete them silently. This preserves
+a reversible code rollback. Generated artifacts, imports, and their source-free
+activity identifiers remain unchanged.
 
 Future schema changes require:
 
@@ -138,7 +159,8 @@ meaningful repeated testing and restoration.
   app-shell snapshot.
 - Challenge evidence remains explainable and reusable by a later mastery model.
 - Views and domain tests remain independent of SwiftData.
-- The application stays useful without network, account, model, or iCloud.
+- Saved generated history, imported-source reading, progress, and settings stay
+  useful without network, account, model, or iCloud.
 - CloudKit can be designed later without being implied by local persistence.
 
 ### Negative
@@ -146,12 +168,17 @@ meaningful repeated testing and restoration.
 - The application owns a schema and migration responsibility earlier than the
   original phase sequence.
 - Cross-device progress is unavailable.
-- Seed-content identifier stability becomes a release requirement.
+- A fresh installation can have no article or quiz while generation is
+  unavailable.
+- Dormant seed-evidence identifiers remain until an explicit deletion or export
+  policy supersedes this reversible migration choice.
 - A temporary in-memory fallback cannot persist progress.
 
 ## Verification
 
 - Unit-test deterministic progress projections and missing content identifiers.
+- Test that retired seed identifiers remain dormant and cannot appear in
+  learner-facing counts, navigation, Library, Challenges, or Today.
 - Integration-test an in-memory SwiftData container for round trips, append-only
   attempts, article upserts, settings, and reset.
 - Test initialization, read, write, and reset failures through deterministic

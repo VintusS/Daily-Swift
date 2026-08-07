@@ -113,7 +113,7 @@ private enum GeneratedLearningPreviewFixtures {
             documents: [SourceLibraryFixtures.document],
             onOpenArticle: { _ in },
             onOpenQuiz: { _ in },
-            onOpenReviewedLearning: {}
+            onReturnToLibrary: {}
         )
     }
     .preferredColorScheme(.dark)
@@ -128,7 +128,7 @@ private enum GeneratedLearningPreviewFixtures {
             documents: [SourceLibraryFixtures.document],
             onOpenArticle: { _ in },
             onOpenQuiz: { _ in },
-            onOpenReviewedLearning: {}
+            onReturnToLibrary: {}
         )
     }
     .environment(\.dynamicTypeSize, .accessibility3)

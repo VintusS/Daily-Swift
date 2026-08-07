@@ -352,8 +352,9 @@ actor GeneratedLearningGenerator: GeneratedLearningGenerating {
         request: LanguageModelGenerationRequest,
         candidate: LanguageModelGeneratedCandidate
     ) -> GeneratedLearningArtifact {
-        GeneratedLearningArtifact(
-            id: makeArtifactID(),
+        let artifactID = makeArtifactID()
+        return GeneratedLearningArtifact(
+            id: artifactID,
             schemaVersion:
                 GeneratedLearningArtifact.currentSchemaVersion,
             topic: topic,
@@ -388,7 +389,10 @@ actor GeneratedLearningGenerator: GeneratedLearningGenerating {
             ),
             quiz: GeneratedLearningQuiz(
                 prompt: candidate.quiz.prompt,
-                choices: candidate.quiz.choices,
+                choices: GeneratedQuizChoiceOrderer.orderedChoices(
+                    candidate.quiz.choices,
+                    artifactID: artifactID
+                ),
                 answerKeyChoiceID: candidate.quiz.answerKeyChoiceID,
                 explanation: candidate.quiz.explanation,
                 citationReferenceIDs:

@@ -24,7 +24,7 @@ enum SourceRetrievalPresentationFailure: Equatable, Sendable {
         case .queryTooLong:
             "Keep the search to 200 characters or fewer."
         case .unavailable:
-            "Daily Swift could not verify the current local passages. Imported sources and reviewed articles remain unchanged."
+            "Daily Swift could not verify the current local passages. Imported sources and saved generated learning remain unchanged."
         }
     }
 }

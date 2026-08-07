@@ -4,7 +4,7 @@ import Testing
 
 @MainActor
 struct LearningStudioViewModelTests {
-    private let catalog = SeedCurriculumProvider.catalog
+    private let catalog = LearningCatalogTestFixtures.catalog
     private let fixedDate = Date(timeIntervalSince1970: 1_785_200_000)
     private let fixedAttemptID = UUID(
         uuidString: "00000000-0000-0000-0000-000000000201"

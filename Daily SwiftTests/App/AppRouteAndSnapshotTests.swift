@@ -166,6 +166,19 @@ struct AppRouteAndSnapshotTests {
         #expect(configuration.generatedLearningScenario == .finalizing)
     }
 
+    @Test("Generated history scenario parses deterministically")
+    func generatedHistoryScenarioParses() {
+        let configuration = AppLaunchConfiguration(
+            arguments: [
+                "DailySwift",
+                "--ui-testing",
+                "--generated-learning-scenario=seeded-history",
+            ]
+        )
+
+        #expect(configuration.generatedLearningScenario == .seededHistory)
+    }
+
     private func makeDefaultsFixture() -> (
         defaults: UserDefaults,
         suiteName: String

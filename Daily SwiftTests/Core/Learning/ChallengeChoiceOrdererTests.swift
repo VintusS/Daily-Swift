@@ -2,12 +2,10 @@ import Testing
 @testable import DailySwift
 
 struct ChallengeChoiceOrdererTests {
-    private let provider = SeedCurriculumProvider()
+    private let catalog = LearningCatalogTestFixtures.catalog
 
     @Test("Every presentation preserves the exact choice identities")
     func preservesChoiceIdentities() throws {
-        let catalog = try provider.loadCatalog()
-
         for challenge in catalog.challenges {
             let presentedChoices = ChallengeChoiceOrderer.orderedChoices(
                 for: challenge,
@@ -30,7 +28,7 @@ struct ChallengeChoiceOrdererTests {
     @Test("A fixed seed produces a stable presentation order")
     func fixedSeedIsStable() throws {
         let challenge = try #require(
-            try provider.loadCatalog().challenges.first
+            catalog.challenges.first
         )
 
         let firstOrder = ChallengeChoiceOrderer.orderedChoices(
@@ -48,7 +46,7 @@ struct ChallengeChoiceOrdererTests {
     @Test("Different presentations vary the correct answer position")
     func correctAnswerPositionVaries() throws {
         let challenge = try #require(
-            try provider.loadCatalog().challenges.first
+            catalog.challenges.first
         )
 
         let correctPositions = Set(

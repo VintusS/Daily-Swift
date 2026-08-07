@@ -2,6 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-01
+**Last amended:** 2026-08-01 — generated-only learner presentation
 **Owners:** Project maintainers
 
 ## Context
@@ -17,6 +18,11 @@ Prompt instructions to use original wording and avoid extended quotation do not
 prove originality or a quotation limit by themselves. The private presentation
 gate therefore also rejects any candidate field that repeats 16 or more
 consecutive normalized words from a supplied source card.
+
+The first Packet 008 implementation retained authored articles and challenges
+beside generated history. The owner subsequently directed that learner-facing
+articles and quizzes be generated-only. This changes presentation fallback, not
+the evidence required for a generated artifact to cross the trust gate.
 
 ## Decision
 
@@ -55,6 +61,24 @@ deterministic correctness, mastery, assessment, prerequisite unlocking, and
 authoritative curriculum. The UI says “matches the generated answer key” rather
 than claiming independently verified correctness.
 
+Randomize a generated quiz's choice order once at the application boundary
+before persistence, then revalidate that the stable answer-key identity resolves
+to exactly one stored choice. Persist the accepted order and do not reshuffle it
+when the artifact is opened or restored. Random placement is presentation
+variation, not evidence of factual correctness or semantic novelty.
+
+Each explicit Generate or New Variation action creates a fresh request and must
+not silently reuse a prior presentation artifact. The current completion
+follow-up does not add exact or semantic duplicate suppression, so a fresh
+request can still produce similar or identical wording. The UI must not promise
+that model output is inherently random or unique.
+
+Good/Bad quality-feedback UI and storage are deferred to a separate work packet
+and accepted persistence/privacy decision. If introduced later, a rating is
+subjective learner feedback: it cannot change trust, citation validity,
+answer-key status, correctness, mastery, or curriculum, cannot bypass this
+presentation gate, and must never be described as model training.
+
 Every article and quiz exposes exact citation actions. If a citation no longer
 resolves, the artifact fails closed and is removed from learner-facing history.
 Source deletion removes every stored generated artifact that references it.
@@ -63,8 +87,10 @@ derived cleanup cannot be confirmed, retain the source and present a retryable
 failure; if the later source mutation fails, disclose that generated artifacts
 may already have been removed.
 
-Reviewed deterministic learning remains available when retrieval is
-insufficient or generation is unavailable, cancelled, rejected, or failed.
+Previously accepted generated history and imported-source reading remain
+available when retrieval is insufficient or generation is unavailable,
+cancelled, rejected, or failed. If neither exists, the app presents an explicit
+empty or unavailable state rather than an authored article or quiz.
 
 The current overlap gate and trust tier authorize private, local presentation
 only. The gate is conservative protection, not proof of originality or broader
@@ -86,7 +112,8 @@ Article and quiz scopes retain their own exact citations.
 
 This is safer but does not provide the owner-requested private experimental
 learning loop. The explicit trust label, mastery exclusion, exact citations,
-and deterministic fallback bound the initial risk.
+generated-history/source-reading fallback, and honest empty state bound the
+initial risk.
 
 ## Consequences
 
@@ -114,8 +141,14 @@ and deterministic fallback bound the initial risk.
 - Test cancellation, stale-result suppression, unavailable and rejected states.
 - Test that generated attempts are persisted but excluded from mastery.
 - Test source-deletion cascade and corrupt-artifact fail-closed restoration.
+- Test one-time choice randomization, stable restored order, and stable
+  answer-key identity with an injected deterministic random source.
+- Test fresh request identity and no silent artifact reuse while making no exact
+  or semantic uniqueness claim.
+- Test empty and unavailable states without learner-facing seed content while
+  preserving saved generated history and imported-source reading.
 - Verify VoiceOver order, accessibility text sizes, Reduce Motion, non-color
-  state, and fallback reachability.
+  state, and empty/fallback reachability.
 
 ## Supersession
 

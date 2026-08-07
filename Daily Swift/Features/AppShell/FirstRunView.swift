@@ -46,7 +46,7 @@ struct FirstRunView: View {
                         FoundationPromiseRow(
                             symbol: "iphone.gen3",
                             title: "Local by default",
-                            detail: "The learning path stays useful without a network, account, or model."
+                            detail: "Imported sources and saved generated learning stay useful without a network or account."
                         )
                     }
 
@@ -77,7 +77,9 @@ struct FirstRunView: View {
                         .accessibilityIdentifier("app-shell.privacy")
                     }
 
-                    Text("No model, network, or iCloud account is required to begin.")
+                    Text(
+                        "No network or iCloud account is required. Creating new learning requires compatible on-device generation."
+                    )
                         .font(StudioTokens.Typography.caption)
                         .foregroundStyle(StudioTokens.Color.secondaryText)
                         .frame(maxWidth: .infinity)

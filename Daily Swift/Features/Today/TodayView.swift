@@ -1,16 +1,16 @@
 import SwiftUI
 
 struct TodayView: View {
-    let catalog: LearningCatalog
-    let evidence: LearningEvidenceSummary
-    let onContinue: () -> Void
-    let onOpenStep: (DailyLearningStep) -> Void
+    let snapshot: LearningProgressSnapshot
+    let generatedArtifacts: [GeneratedLearningArtifact]
+    let generatedLearningState: GeneratedLearningViewState
+    let onGenerateLearning: () -> Void
+    let onOpenGeneratedArticle: (GeneratedLearningArtifact) -> Void
+    let onOpenGeneratedQuiz: (UUID) -> Void
     let onPrivacy: () -> Void
 
-    private var nextStep: DailyLearningStep? {
-        catalog.dailyPlan.steps.first {
-            !evidence.completedDailyStepIDs.contains($0.id)
-        }
+    private var latestArtifact: GeneratedLearningArtifact? {
+        generatedArtifacts.first
     }
 
     var body: some View {
@@ -21,25 +21,12 @@ struct TodayView: View {
             ) {
                 focusHeader
 
-                dailyPlanCard
+                generateCard
 
-                VStack(
-                    alignment: .leading,
-                    spacing: StudioTokens.Spacing.small
-                ) {
-                    Text("Session steps")
-                        .font(StudioTokens.Typography.title)
-                        .foregroundStyle(StudioTokens.Color.primaryText)
-                        .accessibilityAddTraits(.isHeader)
-
-                    ForEach(catalog.dailyPlan.steps) { step in
-                        TodayStepRow(
-                            step: step,
-                            isComplete: evidence.completedDailyStepIDs
-                                .contains(step.id),
-                            onOpen: { onOpenStep(step) }
-                        )
-                    }
+                if let latestArtifact {
+                    currentPairCard(latestArtifact)
+                } else {
+                    generatedHistoryState
                 }
 
                 LearningCard {
@@ -48,13 +35,13 @@ struct TodayView: View {
                         spacing: StudioTokens.Spacing.small
                     ) {
                         Label(
-                            "Ready without a connection",
-                            systemImage: "wifi.slash"
+                            "Your saved learning stays local",
+                            systemImage: "iphone"
                         )
                         .font(StudioTokens.Typography.sectionHeading)
 
                         Text(
-                            "This starter session, every answer check, and your recorded evidence work entirely on device."
+                            "Previously generated articles, quizzes, and imported sources remain readable without a connection. Creating a new pair requires compatible on-device generation and enough matching source evidence."
                         )
                         .font(StudioTokens.Typography.supporting)
                         .foregroundStyle(StudioTokens.Color.secondaryText)
@@ -84,159 +71,187 @@ struct TodayView: View {
                 .font(StudioTokens.Typography.codeCaption.weight(.bold))
                 .foregroundStyle(StudioTokens.Color.primaryText)
 
-            Text(catalog.dailyPlan.focus)
+            Text("Learn from your sources")
                 .font(StudioTokens.Typography.display)
                 .foregroundStyle(StudioTokens.Color.primaryText)
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier("app-shell.ready")
 
-            Text(catalog.dailyPlan.summary)
-                .font(StudioTokens.Typography.body)
-                .foregroundStyle(StudioTokens.Color.secondaryText)
+            Text(
+                "Choose the Swift topic you want next. Daily Swift creates a new cited article and quiz from your private imported material."
+            )
+            .font(StudioTokens.Typography.body)
+            .foregroundStyle(StudioTokens.Color.secondaryText)
         }
     }
 
-    private var dailyPlanCard: some View {
+    private var generateCard: some View {
         LearningCard {
             VStack(
                 alignment: .leading,
                 spacing: StudioTokens.Spacing.medium
             ) {
-                HStack(alignment: .top) {
-                    VStack(
-                        alignment: .leading,
-                        spacing: StudioTokens.Spacing.xxSmall
-                    ) {
-                        Text(catalog.dailyPlan.title)
-                            .font(StudioTokens.Typography.title)
-
-                        Label(
-                            "\(catalog.dailyPlan.estimatedMinutes) minutes",
-                            systemImage: "clock"
-                        )
-                        .font(StudioTokens.Typography.supporting)
-                        .foregroundStyle(StudioTokens.Color.secondaryText)
-                    }
-
-                    Spacer()
-
-                    LearningBadge(
-                        nextStep == nil ? "Complete" : "Offline",
-                        symbol: nextStep == nil
-                            ? "checkmark.circle.fill"
-                            : "arrow.down.circle",
-                        role: nextStep == nil ? .success : .information
-                    )
-                }
-
-                EvidenceProgressView(
-                    title: "Session progress",
-                    completed: evidence.completedDailyStepCount,
-                    total: catalog.dailyPlan.steps.count,
-                    supportingText: nextStep == nil
-                        ? "Every recorded step in this starter session is complete."
-                        : "Your next step is \(nextStep?.title ?? "ready")."
+                Label(
+                    "Create your next article and quiz",
+                    systemImage: "sparkles.rectangle.stack"
                 )
+                .font(StudioTokens.Typography.title)
 
-                Button(action: onContinue) {
+                Text(
+                    "Request another pair whenever you want. Daily Swift adds no generation-count limit; each request still runs one at a time and must pass source and safety checks before it is saved."
+                )
+                .font(StudioTokens.Typography.supporting)
+                .foregroundStyle(StudioTokens.Color.secondaryText)
+
+                Button(action: onGenerateLearning) {
                     Label(
-                        nextStep == nil
-                            ? "Review the session"
-                            : evidence.completedDailyStepCount == 0
-                                ? "Start today’s session"
-                                : "Continue today’s session",
-                        systemImage: nextStep == nil
-                            ? "arrow.counterclockwise"
-                            : "play.fill"
+                        generatedArtifacts.isEmpty
+                            ? "Generate from your sources"
+                            : "Generate another pair",
+                        systemImage: "sparkles"
                     )
                     .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(StudioPrimaryButtonStyle())
                 .accessibilityHint(
-                    nextStep == nil
-                        ? "Opens the first learning step again."
-                        : "Opens the next unfinished learning step."
+                    "Opens a foreground on-device request grounded in imported passages."
                 )
-                .accessibilityIdentifier("today.continue")
+                .accessibilityIdentifier("today.generate")
             }
         }
     }
-}
 
-private struct TodayStepRow: View {
-    let step: DailyLearningStep
-    let isComplete: Bool
-    let onOpen: () -> Void
+    private func currentPairCard(
+        _ artifact: GeneratedLearningArtifact
+    ) -> some View {
+        let articleIsRead = snapshot.activity(
+            for: artifact.articleID
+        ).completedAt != nil
+        let quizIsComplete = hasSavedAnswerKeyMatch(for: artifact)
+        let completedCount = (articleIsRead ? 1 : 0) + (quizIsComplete ? 1 : 0)
 
-    var body: some View {
-        Button(action: onOpen) {
-            HStack(
-                alignment: .top,
-                spacing: StudioTokens.Spacing.small
+        return LearningCard {
+            VStack(
+                alignment: .leading,
+                spacing: StudioTokens.Spacing.medium
             ) {
-                Image(
-                    systemName: isComplete
-                        ? "checkmark.circle.fill"
-                        : symbolName
-                )
-                .font(.title3)
-                .foregroundStyle(StudioTokens.Color.primaryText)
-                .frame(minWidth: 28, minHeight: 28)
-                .accessibilityHidden(true)
-
                 VStack(
                     alignment: .leading,
                     spacing: StudioTokens.Spacing.xxSmall
                 ) {
-                    Text(step.title)
-                        .font(StudioTokens.Typography.sectionHeading)
+                    Text("LATEST GENERATED PAIR")
+                        .font(
+                            StudioTokens.Typography.codeCaption.weight(.bold)
+                        )
+                        .foregroundStyle(StudioTokens.Color.secondaryText)
+
+                    Text(artifact.article.title)
+                        .font(StudioTokens.Typography.title)
                         .foregroundStyle(StudioTokens.Color.primaryText)
 
-                    Text(step.detail)
+                    Text("Topic: \(artifact.topic)")
                         .font(StudioTokens.Typography.supporting)
                         .foregroundStyle(StudioTokens.Color.secondaryText)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    Text(
-                        "\(isComplete ? "Completed" : "Not completed") · \(step.estimatedMinutes) min"
-                    )
-                    .font(StudioTokens.Typography.codeCaption)
-                    .foregroundStyle(StudioTokens.Color.secondaryText)
                 }
 
-                Spacer(minLength: StudioTokens.Spacing.xSmall)
-
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(StudioTokens.Color.secondaryText)
-                    .accessibilityHidden(true)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(StudioTokens.Spacing.medium)
-            .background(
-                StudioTokens.Color.surface,
-                in: RoundedRectangle(
-                    cornerRadius: StudioTokens.Radius.card,
-                    style: .continuous
+                EvidenceProgressView(
+                    title: "Pair progress",
+                    completed: completedCount,
+                    total: 2,
+                    supportingText: completedCount == 2
+                        ? "You read the article and matched its generated quiz answer key."
+                        : "Read the article and complete its generated quiz."
                 )
-            )
+
+                Button {
+                    onOpenGeneratedArticle(artifact)
+                } label: {
+                    Label(
+                        articleIsRead ? "Review article" : "Read article",
+                        systemImage: "book.pages"
+                    )
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(StudioSecondaryButtonStyle())
+                .accessibilityIdentifier("today.open-generated-article")
+
+                Button {
+                    onOpenGeneratedQuiz(artifact.id)
+                } label: {
+                    Label(
+                        quizIsComplete ? "Try quiz again" : "Complete quiz",
+                        systemImage: "checklist"
+                    )
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(StudioSecondaryButtonStyle())
+                .accessibilityIdentifier("today.open-generated-quiz")
+            }
         }
-        .buttonStyle(.plain)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(step.title)
-        .accessibilityValue(
-            "\(isComplete ? "Completed" : "Not completed"), \(step.estimatedMinutes) minutes"
-        )
-        .accessibilityHint("Opens this learning step.")
-        .accessibilityIdentifier("today.step.\(step.id)")
+        .accessibilityIdentifier("today.generated-pair")
     }
 
-    private var symbolName: String {
-        switch step.content {
-        case .article:
-            "book.pages"
-        case .challenge:
-            "checkmark.seal"
+    @ViewBuilder
+    private var generatedHistoryState: some View {
+        LearningCard {
+            switch generatedLearningState {
+            case .loading:
+                HStack(spacing: StudioTokens.Spacing.small) {
+                    ProgressView()
+                    Text("Loading generated learning")
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("today.generated-loading")
+
+            case let .unavailable(reason):
+                generatedEmptyState(
+                    title: reason.title,
+                    message: reason.message,
+                    symbol: "iphone.slash"
+                )
+
+            case let .failed(failure) where failure == .storageUnavailable:
+                generatedEmptyState(
+                    title: failure.title,
+                    message: failure.message,
+                    symbol: "externaldrive.badge.exclamationmark"
+                )
+
+            default:
+                generatedEmptyState(
+                    title: "No generated learning yet",
+                    message: "Import a source, choose a topic, and generate your first cited article and quiz.",
+                    symbol: "sparkles.rectangle.stack"
+                )
+            }
+        }
+        .accessibilityIdentifier("today.generated-empty")
+    }
+
+    private func generatedEmptyState(
+        title: String,
+        message: String,
+        symbol: String
+    ) -> some View {
+        VStack(
+            alignment: .leading,
+            spacing: StudioTokens.Spacing.small
+        ) {
+            Label(title, systemImage: symbol)
+                .font(StudioTokens.Typography.sectionHeading)
+
+            Text(message)
+                .font(StudioTokens.Typography.supporting)
+                .foregroundStyle(StudioTokens.Color.secondaryText)
+        }
+    }
+
+    private func hasSavedAnswerKeyMatch(
+        for artifact: GeneratedLearningArtifact
+    ) -> Bool {
+        snapshot.attempts.contains {
+            $0.challengeID == artifact.quizID
+                && $0.selectedChoiceID == artifact.quiz.answerKeyChoiceID
         }
     }
 }

@@ -38,6 +38,7 @@ struct AppLaunchConfiguration: Equatable, Sendable {
         case providerFailure = "provider-failure"
         case storageRetry = "storage-retry"
         case persistent
+        case seededHistory = "seeded-history"
     }
 
     static let uiTestingFlag = "--ui-testing"
@@ -210,7 +211,7 @@ struct AppEnvironment {
         learningProgressStore: any LearningProgressStoring =
             InMemoryLearningProgressStore(),
         learningRouter: LearningStudioRouter = LearningStudioRouter(),
-        learningCatalog: LearningCatalog = SeedCurriculumProvider.catalog,
+        learningCatalog: LearningCatalog = .generatedOnly,
         sourceLibraryService: any SourceLibraryServing =
             InMemorySourceLibraryService(),
         sourceRetriever: (any SourceRetrieving)? = nil,
@@ -280,6 +281,11 @@ struct AppEnvironment {
                         reset:
                             launchConfiguration
                                 .shouldResetUITestingGeneratedLearning
+                    )
+                case .seededHistory:
+                    provider = DeterministicLanguageModelProvider()
+                    store = InMemoryGeneratedLearningStore(
+                        artifacts: [GeneratedLearningDebugFixtures.artifact]
                     )
                 }
             } else {
@@ -402,7 +408,7 @@ struct AppEnvironment {
             case .empty:
                 return InMemoryLearningProgressStore()
             case .seeded:
-                return seededLearningProgressStore()
+                return generatedLearningProgressStore()
             case .restoreRetry:
                 return InMemoryLearningProgressStore(
                     restoreOutcomes: [
@@ -452,26 +458,25 @@ struct AppEnvironment {
     }
 
 #if DEBUG
-    private static func seededLearningProgressStore()
+    private static func generatedLearningProgressStore()
         -> any LearningProgressStoring {
-        let catalog = SeedCurriculumProvider.catalog
-        let article = catalog.articles[0]
-        let challenge = catalog.challenges[0]
+        let artifact = GeneratedLearningDebugFixtures.artifact
         let now = Date(timeIntervalSince1970: 1_785_200_000)
 
         return InMemoryLearningProgressStore(
             snapshot: LearningProgressSnapshot(
                 attempts: [
                     ChallengeAttempt(
-                        challengeID: challenge.id,
-                        selectedChoiceID: challenge.correctChoiceID,
-                        isCorrect: true,
+                        challengeID: artifact.quizID,
+                        selectedChoiceID:
+                            artifact.quiz.answerKeyChoiceID,
+                        isCorrect: false,
                         attemptedAt: now
                     ),
                 ],
                 articleActivities: [
                     ArticleActivity(
-                        articleID: article.id,
+                        articleID: artifact.articleID,
                         isBookmarked: true,
                         lastOpenedAt: now,
                         completedAt: now

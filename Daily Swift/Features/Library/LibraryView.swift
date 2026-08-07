@@ -3,13 +3,13 @@ import UIKit
 import UniformTypeIdentifiers
 
 struct LibraryView: View {
-    let catalog: LearningCatalog
     let snapshot: LearningProgressSnapshot
     let generatedArtifacts: [GeneratedLearningArtifact]
+    let generatedLearningState: GeneratedLearningViewState
     @Bindable var sourceLibraryViewModel: SourceLibraryViewModel
     @Bindable var sourceRetrievalViewModel: SourceRetrievalViewModel
-    let onOpenArticle: (String) -> Void
     let onGenerateLearning: () -> Void
+    let onRetryGeneratedHistory: () -> Void
     let onOpenGeneratedArticle: (GeneratedLearningArtifact) -> Void
     let onOpenSource: (UUID) -> Void
     let onOpenCitation: (SourceCitation) -> Void
@@ -18,21 +18,6 @@ struct LibraryView: View {
     @State private var showsBookmarksOnly = false
     @State private var isFileImporterPresented = false
     @State private var isAwaitingFileSelection = false
-
-    private var visibleArticles: [LearningArticle] {
-        catalog.articles.filter { article in
-            let matchesBookmark = !showsBookmarksOnly
-                || snapshot.activity(for: article.id).isBookmarked
-            let query = searchText.trimmingCharacters(
-                in: .whitespacesAndNewlines
-            )
-            let matchesSearch = query.isEmpty
-                || article.title.localizedCaseInsensitiveContains(query)
-                || article.summary.localizedCaseInsensitiveContains(query)
-                || article.domain.title.localizedCaseInsensitiveContains(query)
-            return matchesBookmark && matchesSearch
-        }
-    }
 
     private var visibleGeneratedArtifacts: [GeneratedLearningArtifact] {
         generatedArtifacts.filter { artifact in
@@ -214,92 +199,47 @@ struct LibraryView: View {
                 }
             }
 
-            if visibleArticles.isEmpty
-                && visibleGeneratedArtifacts.isEmpty
-                && visibleSources.isEmpty
-                && (showsBookmarksOnly
-                    || sourceRetrievalViewModel.resultCount == 0) {
-                Section {
-                    ContentUnavailableView(
-                        showsBookmarksOnly
-                            ? "No bookmarked articles"
-                            : "No matching articles",
-                        systemImage: showsBookmarksOnly
-                            ? "bookmark"
-                            : "magnifyingglass",
-                        description: Text(
-                            showsBookmarksOnly
-                                ? "Bookmark an article and it will remain easy to find here."
-                                : "Try another title, topic, domain, or imported source."
-                        )
-                    )
-                }
-            } else {
+            Section {
                 if !visibleGeneratedArtifacts.isEmpty {
-                    Section {
-                        ForEach(visibleGeneratedArtifacts) { artifact in
-                            Button {
-                                onOpenGeneratedArticle(artifact)
-                            } label: {
-                                GeneratedArticleHistoryRow(
-                                    artifact: artifact,
-                                    activity: snapshot.activity(
-                                        for: artifact.articleID
-                                    )
+                    ForEach(visibleGeneratedArtifacts) { artifact in
+                        Button {
+                            onOpenGeneratedArticle(artifact)
+                        } label: {
+                            GeneratedArticleHistoryRow(
+                                artifact: artifact,
+                                activity: snapshot.activity(
+                                    for: artifact.articleID
                                 )
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityIdentifier(
-                                "generated-article.open.\(artifact.id.uuidString.lowercased())"
                             )
                         }
-                    } header: {
-                        HStack {
-                            Text("Generated articles")
-                            Spacer()
-                            Text("\(visibleGeneratedArtifacts.count)")
-                        }
-                        .accessibilityElement(children: .combine)
-                        .accessibilityLabel("Generated articles")
-                        .accessibilityValue(
-                            "\(visibleGeneratedArtifacts.count)"
-                        )
+                        .buttonStyle(.plain)
                         .accessibilityIdentifier(
-                            "generated-articles.count"
-                        )
-                    } footer: {
-                        Text(
-                            "These private artifacts passed structural and exact-citation checks, not independent factual verification."
+                            "generated-article.open.\(artifact.id.uuidString.lowercased())"
                         )
                     }
+                } else {
+                    generatedArticleEmptyState
                 }
-
-                if !visibleArticles.isEmpty {
-                    Section {
-                        ForEach(visibleArticles) { article in
-                            Button {
-                                onOpenArticle(article.id)
-                            } label: {
-                                ArticleCatalogRow(
-                                    article: article,
-                                    activity: snapshot.activity(
-                                        for: article.id
-                                    )
-                                )
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityIdentifier(
-                                "library.open.\(article.id)"
-                            )
-                        }
-                    } header: {
-                        Text("Project-owned learning articles")
-                    } footer: {
-                        Text(
-                            "Project Seed content is bundled for offline testing. It becomes Reviewed Core only after owner review."
-                        )
+            } header: {
+                HStack {
+                    Text("Generated articles")
+                    Spacer()
+                    if !visibleGeneratedArtifacts.isEmpty {
+                        Text("\(visibleGeneratedArtifacts.count)")
                     }
                 }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Generated articles")
+                .accessibilityValue(
+                    "\(visibleGeneratedArtifacts.count)"
+                )
+                .accessibilityIdentifier(
+                    "generated-articles.count"
+                )
+            } footer: {
+                Text(
+                    "Only your saved generated articles appear here. They passed structural and exact-citation checks, not independent factual verification."
+                )
             }
         }
         .listStyle(.insetGrouped)
@@ -419,6 +359,83 @@ struct LibraryView: View {
         }
     }
 
+    @ViewBuilder
+    private var generatedArticleEmptyState: some View {
+        let query = searchText.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+        if showsBookmarksOnly || !query.isEmpty {
+            ContentUnavailableView(
+                showsBookmarksOnly
+                    ? "No bookmarked generated articles"
+                    : "No matching generated articles",
+                systemImage: showsBookmarksOnly
+                    ? "bookmark"
+                    : "magnifyingglass",
+                description: Text(
+                    showsBookmarksOnly
+                        ? "Bookmark a generated article and it will remain easy to find here."
+                        : "Try another generated title, topic, or learning objective."
+                )
+            )
+            .accessibilityIdentifier("library.generated-filtered-empty")
+        } else {
+            switch generatedLearningState {
+            case .loading:
+                HStack(spacing: StudioTokens.Spacing.small) {
+                    ProgressView()
+                    Text("Loading generated articles")
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("library.generated-loading")
+
+            case let .failed(failure) where failure == .storageUnavailable:
+                VStack(
+                    alignment: .leading,
+                    spacing: StudioTokens.Spacing.small
+                ) {
+                    Label(
+                        failure.title,
+                        systemImage: "externaldrive.badge.exclamationmark"
+                    )
+                    .font(StudioTokens.Typography.sectionHeading)
+
+                    Text(failure.message)
+                        .font(StudioTokens.Typography.supporting)
+                        .foregroundStyle(StudioTokens.Color.secondaryText)
+
+                    Button(
+                        "Retry loading generated history",
+                        action: onRetryGeneratedHistory
+                    )
+                    .buttonStyle(.bordered)
+                    .accessibilityIdentifier(
+                        "library.retry-generated-history"
+                    )
+                }
+                .accessibilityIdentifier("library.generated-storage-unavailable")
+
+            case let .unavailable(reason):
+                ContentUnavailableView(
+                    reason.title,
+                    systemImage: "iphone.slash",
+                    description: Text(reason.message)
+                )
+                .accessibilityIdentifier("library.generated-unavailable")
+
+            default:
+                ContentUnavailableView(
+                    "No generated articles yet",
+                    systemImage: "sparkles.rectangle.stack",
+                    description: Text(
+                        "Import a source and request a topic to create your first cited article and quiz."
+                    )
+                )
+                .accessibilityIdentifier("library.generated-empty")
+            }
+        }
+    }
+
     private func searchImportedPassages() {
         guard !showsBookmarksOnly,
               !sourceLibraryViewModel.documents.isEmpty else {
@@ -439,88 +456,6 @@ struct LibraryView: View {
     private func reconcileRetrievalSources() {
         sourceRetrievalViewModel.reconcileAvailableSources(
             Set(sourceLibraryViewModel.documents.map(\.id))
-        )
-    }
-}
-
-private struct ArticleCatalogRow: View {
-    let article: LearningArticle
-    let activity: ArticleActivity
-
-    var body: some View {
-        HStack(
-            alignment: .top,
-            spacing: StudioTokens.Spacing.small
-        ) {
-            Image(systemName: article.domain.symbolName)
-                .font(.title3)
-                .foregroundStyle(StudioTokens.Color.action)
-                .frame(minWidth: 30, minHeight: 30)
-                .accessibilityHidden(true)
-
-            VStack(
-                alignment: .leading,
-                spacing: StudioTokens.Spacing.xSmall
-            ) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(article.title)
-                        .font(StudioTokens.Typography.sectionHeading)
-                        .foregroundStyle(StudioTokens.Color.primaryText)
-
-                    Spacer()
-
-                    if activity.isBookmarked {
-                        Image(systemName: "bookmark.fill")
-                            .foregroundStyle(StudioTokens.Color.action)
-                            .accessibilityLabel("Bookmarked")
-                    }
-                }
-
-                Text(article.summary)
-                    .font(StudioTokens.Typography.supporting)
-                    .foregroundStyle(StudioTokens.Color.secondaryText)
-
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: StudioTokens.Spacing.xSmall) {
-                        metadata
-                    }
-
-                    VStack(
-                        alignment: .leading,
-                        spacing: StudioTokens.Spacing.xxSmall
-                    ) {
-                        metadata
-                    }
-                }
-            }
-
-            Image(systemName: "chevron.right")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(StudioTokens.Color.secondaryText)
-                .accessibilityHidden(true)
-        }
-        .padding(.vertical, StudioTokens.Spacing.xxSmall)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(article.title)
-        .accessibilityValue(
-            "\(article.summary) \(article.trust.label), \(article.domain.title), \(article.estimatedMinutes) minutes, \(activity.completedAt == nil ? "not read" : "read")\(activity.isBookmarked ? ", bookmarked" : "")"
-        )
-        .accessibilityHint("Opens the article.")
-    }
-
-    @ViewBuilder
-    private var metadata: some View {
-        LearningBadge(
-            article.trust.label,
-            symbol: "doc.badge.gearshape",
-            role: .information
-        )
-        LearningBadge(
-            activity.completedAt == nil ? "Unread" : "Read",
-            symbol: activity.completedAt == nil
-                ? "circle"
-                : "checkmark.circle.fill",
-            role: activity.completedAt == nil ? .neutral : .success
         )
     }
 }

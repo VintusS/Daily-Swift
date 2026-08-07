@@ -3,12 +3,11 @@ import Testing
 @testable import DailySwift
 
 struct LearningProgressProjectorTests {
-    private let provider = SeedCurriculumProvider()
+    private let catalog = LearningCatalogTestFixtures.catalog
     private let eventDate = Date(timeIntervalSince1970: 1_000)
 
     @Test("An empty snapshot produces no completed evidence")
     func emptySnapshotHasNoCompletedEvidence() throws {
-        let catalog = try provider.loadCatalog()
         let summary = LearningProgressProjector.evidence(
             catalog: catalog,
             snapshot: .empty
@@ -25,7 +24,6 @@ struct LearningProgressProjectorTests {
 
     @Test("Only catalog-backed evidence contributes to projection")
     func projectionIgnoresUnknownContent() throws {
-        let catalog = try provider.loadCatalog()
         let challenge = try #require(catalog.challenges.first)
         let article = try #require(catalog.articles.first)
         let snapshot = LearningProgressSnapshot(
@@ -63,9 +61,8 @@ struct LearningProgressProjectorTests {
 
     @Test("Wrong then correct attempts preserve both pieces of evidence")
     func wrongThenCorrectEvidence() throws {
-        let catalog = try provider.loadCatalog()
         let challenge = try #require(
-            catalog.challenge(id: "swift.value-copy-output")
+            catalog.challenges.first
         )
         let wrongChoice = try #require(
             challenge.choices.first {
@@ -109,7 +106,6 @@ struct LearningProgressProjectorTests {
 
     @Test("Completing every ordered step completes the daily plan")
     func dailyPlanCompletion() throws {
-        let catalog = try provider.loadCatalog()
         var attempts: [ChallengeAttempt] = []
         var activities: [ArticleActivity] = []
 

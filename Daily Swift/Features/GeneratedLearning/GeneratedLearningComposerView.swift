@@ -6,7 +6,7 @@ struct GeneratedLearningComposerView: View {
     let documents: [SourceDocument]
     let onOpenArticle: (GeneratedLearningArtifact) -> Void
     let onOpenQuiz: (UUID) -> Void
-    let onOpenReviewedLearning: () -> Void
+    let onReturnToLibrary: () -> Void
 
     @Environment(\.scenePhase) private var scenePhase
     @AccessibilityFocusState private var statusIsFocused: Bool
@@ -329,7 +329,7 @@ struct GeneratedLearningComposerView: View {
                         )
                         .font(StudioTokens.Typography.supporting)
                     }
-                    fallbackButton
+                    returnToLibraryButton
                 }
                 .accessibilityIdentifier(
                     "generated-learning.status.rejected"
@@ -419,19 +419,22 @@ struct GeneratedLearningComposerView: View {
                 title: "\(title)",
                 message: "\(message)"
             )
-            fallbackButton
+            returnToLibraryButton
         }
     }
 
-    private var fallbackButton: some View {
+    private var returnToLibraryButton: some View {
         Button {
-            onOpenReviewedLearning()
+            onReturnToLibrary()
         } label: {
-            Label("Continue with reviewed learning", systemImage: "checkmark.shield")
+            Label("Return to your library", systemImage: "books.vertical")
                 .frame(maxWidth: .infinity)
         }
         .buttonStyle(StudioSecondaryButtonStyle())
-        .accessibilityIdentifier("generated-learning.fallback")
+        .accessibilityHint(
+            "Returns to your imported sources and saved generated articles."
+        )
+        .accessibilityIdentifier("generated-learning.return-library")
     }
 
     private var sourceHelpSection: some View {

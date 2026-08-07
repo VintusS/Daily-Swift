@@ -190,12 +190,14 @@ final class DailySwiftUITests: XCTestCase {
     }
 
     @MainActor
-    func testNativeTabsSupportChallengeArticleAndProgressFlow() throws {
+    func testNativeTabsPresentOnlyGeneratedLearningAndProgress() throws {
         let app = XCUIApplication()
         app.launchArguments = [
             "--ui-testing",
             "--app-shell-scenario=ready",
             "--learning-studio-scenario=empty",
+            "--source-library-scenario=seeded",
+            "--generated-learning-scenario=seeded-history",
         ]
 
         app.launch()
@@ -209,45 +211,76 @@ final class DailySwiftUITests: XCTestCase {
         XCTAssertTrue(tabBar.buttons["Challenges"].exists)
         XCTAssertTrue(tabBar.buttons["Library"].exists)
         XCTAssertTrue(tabBar.buttons["Progress"].exists)
+        XCTAssertTrue(
+            app.descendants(matching: .any)["today.generated-pair"]
+                .waitForExistence(timeout: 5)
+        )
+        XCTAssertFalse(
+            app.staticTexts["Use Value Semantics for Predictable State"]
+                .exists
+        )
 
         tabBar.buttons["Challenges"].tap()
         XCTAssertTrue(
             app.navigationBars["Challenges"].waitForExistence(timeout: 5)
         )
 
-        app.buttons["challenges.open.swift.value-copy-output"].tap()
+        let generatedQuiz = app.buttons[
+            "generated-quiz.open.77000000-0000-0000-0000-000000000001"
+        ]
+        XCTAssertTrue(scrollToHittable(generatedQuiz, in: app))
+        XCTAssertEqual(
+            app.buttons.matching(
+                NSPredicate(
+                    format: "identifier BEGINSWITH %@",
+                    "challenges.open."
+                )
+            ).count,
+            0,
+            "Authored challenge rows must not be presented."
+        )
+        generatedQuiz.tap()
         XCTAssertTrue(
-            app.descendants(matching: .any)["challenge.player"]
+            app.descendants(matching: .any)["generated-quiz.player"]
                 .waitForExistence(timeout: 5)
         )
-        app.buttons["challenge.choice.zero-one"].tap()
-        app.buttons["challenge.submit"].tap()
-        assertAttemptSaved(
-            app.descendants(matching: .any)[
-                "challenge.feedback.correct"
-            ]
+        app.buttons["generated-quiz.choice.choice-1"].tap()
+        app.buttons["generated-quiz.submit"].tap()
+        assertGeneratedAttemptSaved(
+            app.descendants(matching: .any)["generated-quiz.feedback"]
         )
 
         tabBar.buttons["Library"].tap()
         XCTAssertTrue(
             app.navigationBars["Library"].waitForExistence(timeout: 5)
         )
-        app.buttons["library.open.swift.value-semantics"].tap()
+        let generatedArticle = app.buttons[
+            "generated-article.open.77000000-0000-0000-0000-000000000001"
+        ]
+        XCTAssertTrue(scrollToHittable(generatedArticle, in: app))
+        XCTAssertEqual(
+            app.buttons.matching(
+                NSPredicate(
+                    format: "identifier BEGINSWITH %@",
+                    "library.open."
+                )
+            ).count,
+            0,
+            "Authored article rows must not be presented."
+        )
+        generatedArticle.tap()
         XCTAssertTrue(
-            app.descendants(matching: .any)["article.reader"]
+            app.descendants(matching: .any)["generated-article.reader"]
                 .waitForExistence(timeout: 5)
         )
-        app.buttons["article.bookmark"].tap()
-        let markReadButton = app.buttons["article.mark-read"]
-        XCTAssertTrue(markReadButton.waitForExistence(timeout: 5))
-        expectation(
-            for: NSPredicate(format: "isEnabled == true"),
-            evaluatedWith: markReadButton
-        )
-        waitForExpectations(timeout: 5)
+        app.buttons["generated-article.bookmark"].tap()
+        let markReadButton = app.buttons["generated-article.mark-read"]
+        XCTAssertTrue(scrollToHittable(markReadButton, in: app))
         markReadButton.tap()
         expectation(
-            for: NSPredicate(format: "label == 'Article read'"),
+            for: NSPredicate(
+                format: "label == 'Generated article read'"
+            ),
             evaluatedWith: markReadButton
         )
         waitForExpectations(timeout: 5)
@@ -256,16 +289,26 @@ final class DailySwiftUITests: XCTestCase {
         XCTAssertTrue(
             app.navigationBars["Progress"].waitForExistence(timeout: 5)
         )
-        let correctAnswers = app.descendants(matching: .any)[
-            "progress.correct-answers"
+        let generatedPairs = app.descendants(matching: .any)[
+            "progress.generated-pairs"
         ]
         let articlesRead = app.descendants(matching: .any)[
             "progress.articles-read"
         ]
-        XCTAssertTrue(correctAnswers.waitForExistence(timeout: 5))
+        let quizAttempts = app.descendants(matching: .any)[
+            "progress.generated-attempts"
+        ]
+        let answerKeyMatches = app.descendants(matching: .any)[
+            "progress.answer-key-matches"
+        ]
+        XCTAssertTrue(generatedPairs.waitForExistence(timeout: 5))
         XCTAssertTrue(articlesRead.waitForExistence(timeout: 5))
-        XCTAssertEqual(correctAnswers.value as? String, "1")
+        XCTAssertTrue(quizAttempts.waitForExistence(timeout: 5))
+        XCTAssertTrue(answerKeyMatches.waitForExistence(timeout: 5))
+        XCTAssertEqual(generatedPairs.value as? String, "1")
         XCTAssertEqual(articlesRead.value as? String, "1")
+        XCTAssertEqual(quizAttempts.value as? String, "1")
+        XCTAssertEqual(answerKeyMatches.value as? String, "1")
     }
 
     @MainActor
@@ -276,6 +319,8 @@ final class DailySwiftUITests: XCTestCase {
             "--app-shell-scenario=ready",
             "--learning-studio-scenario=live",
             "--reset-ui-testing-learning-progress",
+            "--source-library-scenario=seeded",
+            "--generated-learning-scenario=seeded-history",
         ]
 
         app.launch()
@@ -283,17 +328,19 @@ final class DailySwiftUITests: XCTestCase {
         let tabBar = app.tabBars.firstMatch
         XCTAssertTrue(tabBar.waitForExistence(timeout: 5))
         tabBar.buttons["Challenges"].tap()
-        app.buttons["challenges.open.swift.value-copy-output"].tap()
+        let generatedQuiz = app.buttons[
+            "generated-quiz.open.77000000-0000-0000-0000-000000000001"
+        ]
+        XCTAssertTrue(scrollToHittable(generatedQuiz, in: app))
+        generatedQuiz.tap()
         XCTAssertTrue(
-            app.descendants(matching: .any)["challenge.player"]
+            app.descendants(matching: .any)["generated-quiz.player"]
                 .waitForExistence(timeout: 5)
         )
-        app.buttons["challenge.choice.zero-one"].tap()
-        app.buttons["challenge.submit"].tap()
-        assertAttemptSaved(
-            app.descendants(matching: .any)[
-                "challenge.feedback.correct"
-            ]
+        app.buttons["generated-quiz.choice.choice-1"].tap()
+        app.buttons["generated-quiz.submit"].tap()
+        assertGeneratedAttemptSaved(
+            app.descendants(matching: .any)["generated-quiz.feedback"]
         )
 
         app.terminate()
@@ -301,6 +348,8 @@ final class DailySwiftUITests: XCTestCase {
             "--ui-testing",
             "--app-shell-scenario=ready",
             "--learning-studio-scenario=live",
+            "--source-library-scenario=seeded",
+            "--generated-learning-scenario=seeded-history",
         ]
         app.launch()
 
@@ -310,14 +359,14 @@ final class DailySwiftUITests: XCTestCase {
         )
         app.tabBars.buttons["Progress"].tap()
 
-        let correctAnswers = app.descendants(matching: .any)[
-            "progress.correct-answers"
+        let attempts = app.descendants(matching: .any)[
+            "progress.generated-attempts"
         ]
-        XCTAssertTrue(correctAnswers.waitForExistence(timeout: 5))
+        XCTAssertTrue(attempts.waitForExistence(timeout: 5))
         XCTAssertEqual(
-            correctAnswers.value as? String,
+            attempts.value as? String,
             "1",
-            "Saved challenge evidence should survive termination."
+            "Saved generated quiz activity should survive termination."
         )
     }
 
@@ -351,6 +400,8 @@ final class DailySwiftUITests: XCTestCase {
             "--ui-testing",
             "--app-shell-scenario=ready",
             "--learning-studio-scenario=write-retry",
+            "--source-library-scenario=seeded",
+            "--generated-learning-scenario=seeded-history",
         ]
 
         app.launch()
@@ -358,28 +409,30 @@ final class DailySwiftUITests: XCTestCase {
         let tabBar = app.tabBars.firstMatch
         XCTAssertTrue(tabBar.waitForExistence(timeout: 5))
         tabBar.buttons["Challenges"].tap()
-        app.buttons["challenges.open.swift.value-copy-output"].tap()
+        let generatedQuiz = app.buttons[
+            "generated-quiz.open.77000000-0000-0000-0000-000000000001"
+        ]
+        XCTAssertTrue(scrollToHittable(generatedQuiz, in: app))
+        generatedQuiz.tap()
         XCTAssertTrue(
-            app.descendants(matching: .any)["challenge.player"]
+            app.descendants(matching: .any)["generated-quiz.player"]
                 .waitForExistence(timeout: 5)
         )
-        app.buttons["challenge.choice.zero-one"].tap()
-        app.buttons["challenge.submit"].tap()
+        app.buttons["generated-quiz.choice.choice-1"].tap()
+        app.buttons["generated-quiz.submit"].tap()
 
         XCTAssertTrue(
-            app.buttons["challenge.retry-save"]
+            app.buttons["generated-quiz.retry-save"]
                 .waitForExistence(timeout: 5),
-            "Correctness should remain visible when saving fails."
+            "Generated answer-key feedback should remain visible when saving fails."
         )
-        app.buttons["challenge.retry-save"].tap()
+        app.buttons["generated-quiz.retry-save"].tap()
 
-        assertAttemptSaved(
-            app.descendants(matching: .any)[
-                "challenge.feedback.correct"
-            ]
+        assertGeneratedAttemptSaved(
+            app.descendants(matching: .any)["generated-quiz.feedback"]
         )
         XCTAssertFalse(
-            app.buttons["challenge.retry-save"].exists,
+            app.buttons["generated-quiz.retry-save"].exists,
             "A successful idempotent retry should clear the unsaved state."
         )
     }
@@ -391,6 +444,8 @@ final class DailySwiftUITests: XCTestCase {
             "--ui-testing",
             "--app-shell-scenario=ready",
             "--learning-studio-scenario=restore-retry",
+            "--source-library-scenario=seeded",
+            "--generated-learning-scenario=seeded-history",
         ]
 
         app.launch()
@@ -411,23 +466,27 @@ final class DailySwiftUITests: XCTestCase {
         XCTAssertTrue(app.tabBars.firstMatch.exists)
 
         app.tabBars.buttons["Challenges"].tap()
-        app.buttons["challenges.open.swift.value-copy-output"].tap()
-        app.buttons["challenge.choice.zero-one"].tap()
-        app.buttons["challenge.submit"].tap()
+        let generatedQuiz = app.buttons[
+            "generated-quiz.open.77000000-0000-0000-0000-000000000001"
+        ]
+        XCTAssertTrue(scrollToHittable(generatedQuiz, in: app))
+        generatedQuiz.tap()
+        app.buttons["generated-quiz.choice.choice-1"].tap()
+        app.buttons["generated-quiz.submit"].tap()
         XCTAssertTrue(
             app.descendants(matching: .any)[
-                "challenge.feedback.temporary-storage"
+                "generated-quiz.feedback"
             ]
             .waitForExistence(timeout: 5)
         )
 
         app.tabBars.buttons["Progress"].tap()
         XCTAssertTrue(
-            app.staticTexts["TEMPORARY SESSION EVIDENCE"]
+            app.staticTexts["TEMPORARY GENERATED ACTIVITY"]
                 .waitForExistence(timeout: 5)
         )
         XCTAssertFalse(
-            app.staticTexts["SAVED LEARNING EVIDENCE"].exists
+            app.staticTexts["SAVED GENERATED ACTIVITY"].exists
         )
 
         app.buttons["progress.preferences"].tap()
@@ -457,7 +516,7 @@ final class DailySwiftUITests: XCTestCase {
         XCTAssertTrue(bookmarkFilter.waitForExistence(timeout: 5))
         bookmarkFilter.tap()
         XCTAssertTrue(
-            app.staticTexts["No bookmarked articles"]
+            app.staticTexts["No bookmarked generated articles"]
                 .waitForExistence(timeout: 5)
         )
 
@@ -470,7 +529,7 @@ final class DailySwiftUITests: XCTestCase {
         searchField.typeText("topic-that-does-not-exist")
 
         XCTAssertTrue(
-            app.staticTexts["No matching articles"]
+            app.staticTexts["No matching generated articles"]
                 .waitForExistence(timeout: 5)
         )
     }
@@ -616,6 +675,7 @@ final class DailySwiftUITests: XCTestCase {
         allSources.tap()
 
         let generate = app.buttons["generated-learning.generate"]
+        XCTAssertTrue(waitForEnabled(generate))
         XCTAssertTrue(scrollToHittable(generate, in: app))
         generate.tap()
 
@@ -777,7 +837,7 @@ final class DailySwiftUITests: XCTestCase {
     }
 
     @MainActor
-    func testGeneratedLearningWithoutSourcesKeepsReviewedLearningAvailable()
+    func testGeneratedLearningWithoutSourcesShowsHonestGeneratedOnlyState()
         throws {
         let app = XCUIApplication()
         app.launchArguments = [
@@ -812,7 +872,7 @@ final class DailySwiftUITests: XCTestCase {
         XCTAssertTrue(scrollToExistence(noSources, in: app))
         let screenshot = XCTAttachment(screenshot: app.screenshot())
         screenshot.name =
-            "Generated learning no-source fallback accessibility XXXL"
+            "Generated learning no-source state accessibility XXXL"
         screenshot.lifetime = .keepAlways
         add(screenshot)
 
@@ -828,10 +888,39 @@ final class DailySwiftUITests: XCTestCase {
         XCTAssertTrue(
             app.navigationBars["Library"].waitForExistence(timeout: 5)
         )
-        let reviewedArticle = app.buttons[
-            "library.open.swift.value-semantics"
-        ]
-        XCTAssertTrue(scrollToHittable(reviewedArticle, in: app))
+        XCTAssertTrue(
+            scrollToExistence(
+                app.descendants(matching: .any)[
+                    "library.generated-empty"
+                ],
+                in: app
+            )
+        )
+        XCTAssertEqual(
+            app.buttons.matching(
+                NSPredicate(
+                    format: "identifier BEGINSWITH %@",
+                    "library.open."
+                )
+            ).count,
+            0
+        )
+        app.tabBars.buttons["Challenges"].tap()
+        XCTAssertTrue(
+            scrollToExistence(
+                app.descendants(matching: .any)["challenges.empty"],
+                in: app
+            )
+        )
+        XCTAssertEqual(
+            app.buttons.matching(
+                NSPredicate(
+                    format: "identifier BEGINSWITH %@",
+                    "challenges.open."
+                )
+            ).count,
+            0
+        )
     }
 
     @MainActor
@@ -858,6 +947,7 @@ final class DailySwiftUITests: XCTestCase {
             topic: "page provenance"
         )
         XCTAssertTrue(waitForEnabled(generate))
+        XCTAssertTrue(scrollToHittable(generate, in: app))
         generate.tap()
 
         let openArticle = app.buttons[
@@ -908,6 +998,7 @@ final class DailySwiftUITests: XCTestCase {
             topic: "actor isolation"
         )
         XCTAssertTrue(waitForEnabled(generate))
+        XCTAssertTrue(scrollToHittable(generate, in: app))
         generate.tap()
 
         let firstGenerated = app.descendants(matching: .any)[
@@ -919,6 +1010,7 @@ final class DailySwiftUITests: XCTestCase {
         }
         XCTAssertTrue(generate.isHittable)
         XCTAssertTrue(waitForEnabled(generate))
+        XCTAssertTrue(scrollToHittable(generate, in: app))
         generate.tap()
         XCTAssertTrue(waitForEnabled(generate))
         let secondGenerated = app.descendants(matching: .any)[
@@ -943,6 +1035,22 @@ final class DailySwiftUITests: XCTestCase {
             scrollToExistence(generatedArticleCount, in: app)
         )
         XCTAssertEqual(generatedArticleCount.value as? String, "2")
+        XCTAssertEqual(generatedRows.count, 2)
+        XCTAssertNotEqual(
+            generatedRows.element(boundBy: 0).identifier,
+            generatedRows.element(boundBy: 1).identifier,
+            "Each explicit request should save a distinct artifact identity."
+        )
+        XCTAssertEqual(
+            app.buttons.matching(
+                NSPredicate(
+                    format: "identifier BEGINSWITH %@",
+                    "library.open."
+                )
+            ).count,
+            0,
+            "No authored article rows may accompany generated history."
+        )
 
         app.tabBars.buttons["Challenges"].tap()
         let quizRows = app.buttons.matching(
@@ -957,6 +1065,21 @@ final class DailySwiftUITests: XCTestCase {
         ]
         XCTAssertTrue(scrollToExistence(generatedQuizCount, in: app))
         XCTAssertEqual(generatedQuizCount.value as? String, "2")
+        XCTAssertEqual(quizRows.count, 2)
+        XCTAssertNotEqual(
+            quizRows.element(boundBy: 0).identifier,
+            quizRows.element(boundBy: 1).identifier
+        )
+        XCTAssertEqual(
+            app.buttons.matching(
+                NSPredicate(
+                    format: "identifier BEGINSWITH %@",
+                    "challenges.open."
+                )
+            ).count,
+            0,
+            "No authored quiz rows may accompany generated history."
+        )
         quizRows.firstMatch.tap()
 
         let citation = app.buttons[
@@ -993,6 +1116,7 @@ final class DailySwiftUITests: XCTestCase {
             topic: "actor isolation"
         )
         XCTAssertTrue(waitForEnabled(generate))
+        XCTAssertTrue(scrollToHittable(generate, in: app))
         generate.tap()
         let generated = app.descendants(matching: .any)[
             "generated-learning.status.generated"
@@ -1099,14 +1223,14 @@ final class DailySwiftUITests: XCTestCase {
 
         app.tabBars.buttons["Progress"].tap()
         let attempts = app.descendants(matching: .any)[
-            "progress.attempts"
+            "progress.generated-attempts"
         ]
-        let correctAnswers = app.descendants(matching: .any)[
-            "progress.correct-answers"
+        let answerKeyMatches = app.descendants(matching: .any)[
+            "progress.answer-key-matches"
         ]
         XCTAssertTrue(attempts.waitForExistence(timeout: 5))
-        XCTAssertEqual(attempts.value as? String, "0")
-        XCTAssertEqual(correctAnswers.value as? String, "0")
+        XCTAssertEqual(attempts.value as? String, "1")
+        XCTAssertEqual(answerKeyMatches.value as? String, "1")
         let experimentalAttempt = app.descendants(matching: .any)
             .matching(
                 NSPredicate(
@@ -1133,7 +1257,7 @@ final class DailySwiftUITests: XCTestCase {
     }
 
     @MainActor
-    func testGeneratedLearningUnavailableDisablesGeneration() throws {
+    func testGeneratedLearningUnavailableShowsGeneratedOnlyRecovery() throws {
         let app = XCUIApplication()
         app.launchArguments = [
             "--ui-testing",
@@ -1152,20 +1276,32 @@ final class DailySwiftUITests: XCTestCase {
         ]
         XCTAssertTrue(scrollToExistence(unavailable, in: app))
         XCTAssertFalse(generate.isEnabled)
-        let fallback = app.buttons["generated-learning.fallback"]
-        XCTAssertTrue(scrollToHittable(fallback, in: app))
-        fallback.tap()
+        let returnToLibrary = app.buttons[
+            "generated-learning.return-library"
+        ]
+        XCTAssertTrue(scrollToHittable(returnToLibrary, in: app))
+        returnToLibrary.tap()
         XCTAssertTrue(
             app.descendants(matching: .any)["library.screen"]
                 .waitForExistence(timeout: 5)
         )
-        let reviewedArticle = app.buttons.matching(
-            NSPredicate(
-                format: "identifier BEGINSWITH %@",
-                "library.open."
+        XCTAssertTrue(
+            scrollToExistence(
+                app.descendants(matching: .any)[
+                    "library.generated-unavailable"
+                ],
+                in: app
             )
-        ).firstMatch
-        XCTAssertTrue(scrollToHittable(reviewedArticle, in: app))
+        )
+        XCTAssertEqual(
+            app.buttons.matching(
+                NSPredicate(
+                    format: "identifier BEGINSWITH %@",
+                    "library.open."
+                )
+            ).count,
+            0
+        )
     }
 
     @MainActor
@@ -1184,6 +1320,7 @@ final class DailySwiftUITests: XCTestCase {
             topic: "actor isolation"
         )
         XCTAssertTrue(waitForEnabled(generate))
+        XCTAssertTrue(scrollToHittable(generate, in: app))
         generate.tap()
 
         let rejected = app.descendants(matching: .any)[
@@ -1211,6 +1348,7 @@ final class DailySwiftUITests: XCTestCase {
             topic: "actor isolation"
         )
         XCTAssertTrue(waitForEnabled(generate))
+        XCTAssertTrue(scrollToHittable(generate, in: app))
         generate.tap()
 
         let cancel = app.buttons["generated-learning.cancel"]
@@ -1259,6 +1397,7 @@ final class DailySwiftUITests: XCTestCase {
             topic: "actor isolation"
         )
         XCTAssertTrue(waitForEnabled(generate))
+        XCTAssertTrue(scrollToHittable(generate, in: app))
         generate.tap()
 
         let finalizing = app.descendants(matching: .any)[
@@ -1301,7 +1440,7 @@ final class DailySwiftUITests: XCTestCase {
     }
 
     @MainActor
-    func testGeneratedLearningInsufficientEvidenceKeepsFallback() throws {
+    func testGeneratedLearningInsufficientEvidenceReturnsToSources() throws {
         let app = XCUIApplication()
         app.launchArguments = [
             "--ui-testing",
@@ -1315,14 +1454,28 @@ final class DailySwiftUITests: XCTestCase {
             topic: "nonexistentlexeme"
         )
         XCTAssertTrue(waitForEnabled(generate))
+        XCTAssertTrue(scrollToHittable(generate, in: app))
         generate.tap()
         let failed = app.descendants(matching: .any)[
             "generated-learning.status.failed"
         ]
         XCTAssertTrue(scrollToExistence(failed, in: app))
         XCTAssertTrue(
+            scrollToHittable(
+                app.buttons["generated-learning.return-library"],
+                in: app
+            )
+        )
+        app.buttons["generated-learning.return-library"].tap()
+        XCTAssertTrue(
+            app.descendants(matching: .any)["library.screen"]
+                .waitForExistence(timeout: 5)
+        )
+        XCTAssertTrue(
             scrollToExistence(
-                app.buttons["generated-learning.fallback"],
+                app.buttons[
+                    "source.open.44444444-4444-4444-4444-444444444444"
+                ],
                 in: app
             )
         )
@@ -1607,25 +1760,31 @@ final class DailySwiftUITests: XCTestCase {
     }
 
     @MainActor
-    func testArticleStateRestoresAcrossRelaunch() throws {
+    func testGeneratedArticleStateRestoresAcrossRelaunch() throws {
         let app = XCUIApplication()
         app.launchArguments = [
             "--ui-testing",
             "--app-shell-scenario=ready",
             "--learning-studio-scenario=live",
             "--reset-ui-testing-learning-progress",
+            "--source-library-scenario=seeded",
+            "--generated-learning-scenario=seeded-history",
         ]
 
         app.launch()
         app.tabBars.buttons["Library"].tap()
-        app.buttons["library.open.swift.value-semantics"].tap()
+        let generatedArticle = app.buttons[
+            "generated-article.open.77000000-0000-0000-0000-000000000001"
+        ]
+        XCTAssertTrue(scrollToHittable(generatedArticle, in: app))
+        generatedArticle.tap()
         XCTAssertTrue(
-            app.descendants(matching: .any)["article.reader"]
+            app.descendants(matching: .any)["generated-article.reader"]
                 .waitForExistence(timeout: 5)
         )
 
-        app.buttons["article.bookmark"].tap()
-        let markReadButton = app.buttons["article.mark-read"]
+        app.buttons["generated-article.bookmark"].tap()
+        let markReadButton = app.buttons["generated-article.mark-read"]
         expectation(
             for: NSPredicate(format: "isEnabled == true"),
             evaluatedWith: markReadButton
@@ -1633,7 +1792,9 @@ final class DailySwiftUITests: XCTestCase {
         waitForExpectations(timeout: 5)
         markReadButton.tap()
         expectation(
-            for: NSPredicate(format: "label == 'Article read'"),
+            for: NSPredicate(
+                format: "label == 'Generated article read'"
+            ),
             evaluatedWith: markReadButton
         )
         waitForExpectations(timeout: 5)
@@ -1643,85 +1804,97 @@ final class DailySwiftUITests: XCTestCase {
             "--ui-testing",
             "--app-shell-scenario=ready",
             "--learning-studio-scenario=live",
+            "--source-library-scenario=seeded",
+            "--generated-learning-scenario=seeded-history",
         ]
         app.launch()
 
         XCTAssertTrue(
             app.navigationBars["Library"].waitForExistence(timeout: 5)
         )
-        let row = app.buttons["library.open.swift.value-semantics"]
+        let row = app.buttons[
+            "generated-article.open.77000000-0000-0000-0000-000000000001"
+        ]
         XCTAssertTrue(row.waitForExistence(timeout: 5))
         let value = row.value as? String
-        XCTAssertTrue(value?.contains("read") == true)
-        XCTAssertFalse(value?.contains("not read") == true)
-        XCTAssertTrue(value?.contains("bookmarked") == true)
+        XCTAssertTrue(value?.contains("Read") == true)
+        XCTAssertFalse(value?.contains("Not read") == true)
+        XCTAssertTrue(value?.contains("Bookmarked") == true)
     }
 
     @MainActor
-    func testIncorrectChallengeCanBeRemediatedAndRetried() throws {
+    func testGeneratedQuizCanBeRemediatedAndRetried() throws {
         let app = XCUIApplication()
         app.launchArguments = [
             "--ui-testing",
             "--app-shell-scenario=ready",
             "--learning-studio-scenario=empty",
+            "--source-library-scenario=seeded",
+            "--generated-learning-scenario=seeded-history",
         ]
 
         app.launch()
         app.tabBars.buttons["Challenges"].tap()
-        app.buttons["challenges.open.swift.value-copy-output"].tap()
+        let generatedQuiz = app.buttons[
+            "generated-quiz.open.77000000-0000-0000-0000-000000000001"
+        ]
+        XCTAssertTrue(scrollToHittable(generatedQuiz, in: app))
+        generatedQuiz.tap()
         XCTAssertTrue(
-            app.descendants(matching: .any)["challenge.player"]
+            app.descendants(matching: .any)["generated-quiz.player"]
                 .waitForExistence(timeout: 5)
         )
 
-        app.buttons["challenge.choice.one-one"].tap()
-        app.buttons["challenge.submit"].tap()
+        app.buttons["generated-quiz.choice.choice-2"].tap()
+        app.buttons["generated-quiz.submit"].tap()
         let incorrectFeedback = app.descendants(matching: .any)[
-            "challenge.feedback.incorrect"
+            "generated-quiz.feedback"
         ]
-        assertAttemptSaved(incorrectFeedback)
+        assertGeneratedAttemptSaved(incorrectFeedback)
+        XCTAssertEqual(
+            incorrectFeedback.label,
+            "Different from the generated answer key"
+        )
         XCTAssertTrue(
-            app.buttons["challenge.try-again"]
+            app.buttons["generated-quiz.try-again"]
                 .waitForExistence(timeout: 5)
         )
-        app.buttons["challenge.try-again"].tap()
-        app.buttons["challenge.choice.zero-one"].tap()
-        app.buttons["challenge.submit"].tap()
-        assertAttemptSaved(
-            app.descendants(matching: .any)[
-                "challenge.feedback.correct"
-            ]
+        app.buttons["generated-quiz.try-again"].tap()
+        app.buttons["generated-quiz.choice.choice-1"].tap()
+        app.buttons["generated-quiz.submit"].tap()
+        assertGeneratedAttemptSaved(
+            app.descendants(matching: .any)["generated-quiz.feedback"]
         )
 
         app.tabBars.buttons["Progress"].tap()
         let attempts = app.descendants(matching: .any)[
-            "progress.attempts"
+            "progress.generated-attempts"
         ]
-        let correct = app.descendants(matching: .any)[
-            "progress.correct-answers"
+        let matches = app.descendants(matching: .any)[
+            "progress.answer-key-matches"
         ]
         XCTAssertTrue(attempts.waitForExistence(timeout: 5))
         XCTAssertEqual(attempts.value as? String, "2")
-        XCTAssertEqual(correct.value as? String, "1")
+        XCTAssertEqual(matches.value as? String, "1")
     }
 
     @MainActor
-    private func assertAttemptSaved(_ feedback: XCUIElement) {
+    private func assertGeneratedAttemptSaved(_ feedback: XCUIElement) {
         XCTAssertTrue(
             feedback.waitForExistence(timeout: 5),
-            "Deterministic feedback should be visible."
+            "Generated answer-key feedback should be visible."
         )
         let saved = XCTNSPredicateExpectation(
             predicate: NSPredicate(
                 format: "value CONTAINS %@",
-                "Attempt saved."
+                "Attempt saved as activity evidence."
             ),
             object: feedback
         )
         XCTAssertEqual(
             XCTWaiter.wait(for: [saved], timeout: 5),
             .completed,
-            "The UI must not continue before the attempt is durable."
+            "The UI must not continue before generated activity is durable."
         )
     }
 
@@ -1809,6 +1982,12 @@ final class DailySwiftUITests: XCTestCase {
                 return true
             }
         }
+        for _ in 0..<(maximumSwipes * 2) {
+            app.swipeDown()
+            if element.waitForExistence(timeout: 0.5), element.isHittable {
+                return true
+            }
+        }
         return element.isHittable
     }
 
@@ -1823,6 +2002,12 @@ final class DailySwiftUITests: XCTestCase {
         }
         for _ in 0..<maximumSwipes {
             app.swipeUp()
+            if element.waitForExistence(timeout: 0.5) {
+                return true
+            }
+        }
+        for _ in 0..<(maximumSwipes * 2) {
+            app.swipeDown()
             if element.waitForExistence(timeout: 0.5) {
                 return true
             }

@@ -15,28 +15,15 @@ struct ChallengesView: View {
         }
     }
 
-    let catalog: LearningCatalog
-    let evidence: LearningEvidenceSummary
     let snapshot: LearningProgressSnapshot
     let generatedArtifacts: [GeneratedLearningArtifact]
-    let onOpenChallenge: (String) -> Void
+    let generatedLearningState: GeneratedLearningViewState
+    let onGenerateLearning: () -> Void
+    let onRetryGeneratedHistory: () -> Void
     let onOpenGeneratedQuiz: (UUID) -> Void
 
     @State private var filter: Filter = .all
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-
-    private var visibleChallenges: [LearningChallenge] {
-        catalog.challenges.filter { challenge in
-            switch filter {
-            case .all:
-                true
-            case .incomplete:
-                !evidence.completedChallengeIDs.contains(challenge.id)
-            case .completed:
-                evidence.completedChallengeIDs.contains(challenge.id)
-            }
-        }
-    }
 
     private var visibleGeneratedArtifacts: [GeneratedLearningArtifact] {
         generatedArtifacts.filter { artifact in
@@ -60,99 +47,144 @@ struct ChallengesView: View {
                 .background(.bar)
                 .accessibilityIdentifier("challenges.filter")
 
-            Group {
-                if visibleChallenges.isEmpty
-                    && visibleGeneratedArtifacts.isEmpty {
-                    ContentUnavailableView(
-                        "No \(filter.title.lowercased()) challenges",
-                        systemImage: "checkmark.seal",
-                        description: Text(
-                            filter == .completed
-                                ? "Complete a challenge and its recorded evidence will appear here."
-                                : "Choose another filter to keep practicing."
+            List {
+                Section {
+                    Button(action: onGenerateLearning) {
+                        Label(
+                            generatedArtifacts.isEmpty
+                                ? "Generate a quiz from your sources"
+                                : "Generate another article and quiz",
+                            systemImage: "sparkles"
                         )
-                    )
-                } else {
-                    List {
-                        if !visibleGeneratedArtifacts.isEmpty {
-                            Section {
-                                ForEach(
-                                    visibleGeneratedArtifacts
-                                ) { artifact in
-                                    Button {
-                                        onOpenGeneratedQuiz(artifact.id)
-                                    } label: {
-                                        GeneratedQuizHistoryRow(
-                                            artifact: artifact,
-                                            hasAnswerKeyMatch:
-                                                hasSavedAnswerKeyMatch(
-                                                    for: artifact
-                                                )
-                                        )
-                                    }
-                                    .buttonStyle(.plain)
-                                    .accessibilityIdentifier(
-                                        "generated-quiz.open.\(artifact.id.uuidString.lowercased())"
-                                    )
-                                }
-                            } header: {
-                                HStack {
-                                    Text("Generated quizzes")
-                                    Spacer()
-                                    Text(
-                                        "\(visibleGeneratedArtifacts.count)"
-                                    )
-                                }
-                                .accessibilityElement(children: .combine)
-                                .accessibilityLabel("Generated quizzes")
-                                .accessibilityValue(
-                                    "\(visibleGeneratedArtifacts.count)"
-                                )
-                                .accessibilityIdentifier(
-                                    "generated-quizzes.count"
-                                )
-                            } footer: {
-                                Text(
-                                    "Answer-key matches are recorded as activity only. Generated quizzes are experimental and never update mastery."
-                                )
-                            }
-                        }
-
-                        if !visibleChallenges.isEmpty {
-                            Section {
-                                ForEach(visibleChallenges) { challenge in
-                                    Button {
-                                        onOpenChallenge(challenge.id)
-                                    } label: {
-                                        ChallengeCatalogRow(
-                                            challenge: challenge,
-                                            isComplete: evidence
-                                                .completedChallengeIDs
-                                                .contains(challenge.id)
-                                        )
-                                    }
-                                    .buttonStyle(.plain)
-                                    .accessibilityIdentifier(
-                                        "challenges.open.\(challenge.id)"
-                                    )
-                                }
-                            } header: {
-                                Text(
-                                    "\(visibleChallenges.count) deterministic challenges"
-                                )
-                            } footer: {
-                                Text(
-                                    "Feedback is checked against bundled answer keys. No model or network is used."
-                                )
-                            }
-                        }
                     }
-                    .listStyle(.insetGrouped)
+                    .accessibilityHint(
+                        "Opens a new source-grounded generation request."
+                    )
+                    .accessibilityIdentifier(
+                        "challenges.generate"
+                    )
+                } footer: {
+                    Text(
+                        "Every quiz here comes from a saved generated pair. Answer-key matches are activity evidence only and never update mastery."
+                    )
+                }
+
+                if !visibleGeneratedArtifacts.isEmpty {
+                    Section {
+                        ForEach(visibleGeneratedArtifacts) { artifact in
+                            Button {
+                                onOpenGeneratedQuiz(artifact.id)
+                            } label: {
+                                GeneratedQuizHistoryRow(
+                                    artifact: artifact,
+                                    hasAnswerKeyMatch:
+                                        hasSavedAnswerKeyMatch(
+                                            for: artifact
+                                        )
+                                )
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier(
+                                "generated-quiz.open.\(artifact.id.uuidString.lowercased())"
+                            )
+                        }
+                    } header: {
+                        HStack {
+                            Text("Generated quizzes")
+                            Spacer()
+                            Text("\(visibleGeneratedArtifacts.count)")
+                        }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("Generated quizzes")
+                        .accessibilityValue(
+                            "\(visibleGeneratedArtifacts.count)"
+                        )
+                        .accessibilityIdentifier(
+                            "generated-quizzes.count"
+                        )
+                    }
+                } else {
+                    Section {
+                        generatedEmptyState
+                    }
                 }
             }
+            .listStyle(.insetGrouped)
         }
         .navigationTitle("Challenges")
         .accessibilityIdentifier("challenges.screen")
+    }
+
+    @ViewBuilder
+    private var generatedEmptyState: some View {
+        if generatedArtifacts.isEmpty {
+            switch generatedLearningState {
+            case .loading:
+                HStack(spacing: StudioTokens.Spacing.small) {
+                    ProgressView()
+                    Text("Loading generated quizzes")
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("challenges.loading")
+
+            case let .failed(failure) where failure == .storageUnavailable:
+                VStack(
+                    alignment: .leading,
+                    spacing: StudioTokens.Spacing.small
+                ) {
+                    Label(
+                        failure.title,
+                        systemImage: "externaldrive.badge.exclamationmark"
+                    )
+                    .font(StudioTokens.Typography.sectionHeading)
+
+                    Text(failure.message)
+                        .font(StudioTokens.Typography.supporting)
+                        .foregroundStyle(StudioTokens.Color.secondaryText)
+
+                    Button(
+                        "Retry loading generated history",
+                        action: onRetryGeneratedHistory
+                    )
+                    .buttonStyle(.bordered)
+                    .accessibilityIdentifier(
+                        "challenges.retry-generated-history"
+                    )
+                }
+                .accessibilityIdentifier("challenges.storage-unavailable")
+
+            case let .unavailable(reason):
+                ContentUnavailableView(
+                    reason.title,
+                    systemImage: "iphone.slash",
+                    description: Text(reason.message)
+                )
+                .accessibilityIdentifier("challenges.unavailable")
+
+            default:
+                ContentUnavailableView(
+                    "No generated quizzes yet",
+                    systemImage: "sparkles.rectangle.stack",
+                    description: Text(
+                        "Import a source and request a topic to create your first article and quiz."
+                    )
+                )
+                .accessibilityIdentifier("challenges.empty")
+            }
+        } else {
+            ContentUnavailableView(
+                filter == .completed
+                    ? "No completed generated quizzes"
+                    : "No incomplete generated quizzes",
+                systemImage: filter == .completed
+                    ? "checkmark.circle"
+                    : "circle.dashed",
+                description: Text(
+                    "Choose another filter to see your generated quizzes."
+                )
+            )
+            .accessibilityIdentifier("challenges.filtered-empty")
+        }
     }
 
     private func hasSavedAnswerKeyMatch(
@@ -169,12 +201,12 @@ struct ChallengesView: View {
     private var filterControl: some View {
         if dynamicTypeSize.isAccessibilitySize {
             HStack {
-                Text("Challenge filter")
+                Text("Quiz filter")
                     .font(StudioTokens.Typography.sectionHeading)
 
                 Spacer()
 
-                Picker("Challenge filter", selection: $filter) {
+                Picker("Quiz filter", selection: $filter) {
                     ForEach(Filter.allCases) { filter in
                         Text(filter.title).tag(filter)
                     }
@@ -182,90 +214,12 @@ struct ChallengesView: View {
                 .pickerStyle(.menu)
             }
         } else {
-            Picker("Challenge filter", selection: $filter) {
+            Picker("Quiz filter", selection: $filter) {
                 ForEach(Filter.allCases) { filter in
                     Text(filter.title).tag(filter)
                 }
             }
             .pickerStyle(.segmented)
         }
-    }
-}
-
-private struct ChallengeCatalogRow: View {
-    let challenge: LearningChallenge
-    let isComplete: Bool
-
-    var body: some View {
-        HStack(
-            alignment: .top,
-            spacing: StudioTokens.Spacing.small
-        ) {
-            Image(systemName: challenge.kind.symbolName)
-                .font(.title3)
-                .foregroundStyle(StudioTokens.Color.action)
-                .frame(minWidth: 30, minHeight: 30)
-                .accessibilityHidden(true)
-
-            VStack(
-                alignment: .leading,
-                spacing: StudioTokens.Spacing.xSmall
-            ) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(challenge.title)
-                        .font(StudioTokens.Typography.sectionHeading)
-                        .foregroundStyle(StudioTokens.Color.primaryText)
-
-                    Spacer()
-
-                    if isComplete {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(StudioTokens.Color.primaryText)
-                            .accessibilityLabel("Completed")
-                    }
-                }
-
-                Text(challenge.prompt)
-                    .font(StudioTokens.Typography.supporting)
-                    .foregroundStyle(StudioTokens.Color.secondaryText)
-
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: StudioTokens.Spacing.xSmall) {
-                        metadata
-                    }
-
-                    VStack(
-                        alignment: .leading,
-                        spacing: StudioTokens.Spacing.xxSmall
-                    ) {
-                        metadata
-                    }
-                }
-            }
-
-            Image(systemName: "chevron.right")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(StudioTokens.Color.secondaryText)
-                .accessibilityHidden(true)
-        }
-        .padding(.vertical, StudioTokens.Spacing.xxSmall)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(challenge.title)
-        .accessibilityValue(
-            "\(challenge.prompt) \(challenge.domain.title), \(challenge.kind.label), \(challenge.difficulty.label), \(isComplete ? "completed" : "not completed")"
-        )
-        .accessibilityHint("Opens the challenge.")
-    }
-
-    @ViewBuilder
-    private var metadata: some View {
-        LearningBadge(
-            challenge.domain.title,
-            symbol: challenge.domain.symbolName
-        )
-        LearningBadge(
-            challenge.difficulty.label,
-            symbol: "dial.medium"
-        )
     }
 }

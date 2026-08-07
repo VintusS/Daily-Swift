@@ -2,6 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-01
+**Last amended:** 2026-08-01 — generated-only learner presentation
 **Owners:** Project maintainers
 
 ## Context
@@ -10,6 +11,12 @@ Generated learning must remain attributable after relaunch and must not be
 reused across a changed prompt, schema, source passage, or runtime model label.
 Private imported text and generated artifacts must remain local, and corrupted
 or partially written artifacts must not enter learner-facing history.
+
+The owner subsequently directed that production articles and quizzes be
+generated-only and explicitly repeatable. This requires fresh artifact identity
+for every accepted request, stable randomized quiz presentation, honest finite
+storage behavior, and explicit deferral of duplicate suppression and quality
+feedback rather than claiming unimplemented learning or model training.
 
 ## Decision
 
@@ -22,12 +29,19 @@ Own and version these identities independently:
   framework exposes no exact model build;
 - ordered source-card identities and content hashes;
 - a deterministic source-set hash;
-- application-assigned artifact, article, quiz, citation-card, and choice IDs.
+- application-assigned artifact, article, quiz, citation-card, and choice IDs;
+- the accepted quiz-choice sequence after one-time application randomization.
 
 Store accepted generated artifacts as individual, atomically written JSON files
 under Application Support. Do not store prompt bodies or source-card text in the
 artifact. Store only generated presentation content, exact citation values,
 rights metadata needed for provenance, versions, timestamps, and hashes.
+
+Randomize quiz choices once before the final accepted artifact is persisted,
+using an injectable random source. The stored array order is authoritative after
+that point and restoration must not reshuffle it. Stable choice and answer-key
+identities survive the ordering step. Existing schema-version-1 artifacts
+already persist array order and require no body-file migration for this rule.
 
 Keep the generated candidate in memory during the cancellable provider phase.
 Persist only after the owning UI operation accepts that result and enters
@@ -46,6 +60,12 @@ Restoration resolves the exact current excerpts and reruns the private
 source-overlap presentation gate. This prevents a structurally valid but
 modified artifact file from bypassing the gate after relaunch.
 
+The current completion follow-up does not add exact or semantic duplicate
+suppression. A fresh request and artifact identity prove that prior history was
+not silently reused; they do not prove that the model produced different
+wording. Fingerprint ownership and duplicate policy require a separate accepted
+work packet and ADR amendment before implementation.
+
 Bytes that conclusively fail decoding or schema support move intact into a
 hidden quarantine and are never presented. A transient read failure preserves
 the original file and reports storage failure. Because unreadable and
@@ -63,10 +83,22 @@ only an unlabeled experimental answer record and makes no match claim.
 Unavailable generated IDs do not contribute to mastery or deterministic
 correctness totals.
 
-The first slice keeps history rather than silently reusing a previous artifact
-as a generation cache. Cache lookup, deduplication policy, storage controls, and
-automatic eviction remain follow-up work. Regeneration creates a new
-application-owned artifact identity.
+History is never silently reused to satisfy an explicit Generate or New
+Variation action. Every accepted request receives a new application-owned
+artifact identity. The product imposes no arbitrary artifact-count quota, but
+this is not a promise of infinite storage, uninterrupted model capacity, or
+successful persistence. Generation remains foreground-only and serial. A
+storage failure preserves existing artifacts and exposes a recoverable error;
+automatic eviction remains prohibited until a later storage-management policy
+is accepted.
+
+The current completion follow-up does not store Good/Bad feedback. Any future
+rating schema, sidecar lifecycle, deletion cascade, UI behavior, export, or
+aggregation requires a separate work packet, ADR amendment, and accepted
+persistence/privacy decisions. A future rating must remain app-owned subjective
+feedback; it must not invoke `LanguageModelProvider`, mutate a model, change
+trust, update mastery, prove correctness, or be described as training Apple
+Intelligence.
 
 ## Alternatives considered
 
@@ -93,10 +125,15 @@ learning history would disappear. It is rejected.
 - Identity changes cannot silently reuse incompatible artifacts.
 - Private prompt/source material does not enter artifact files or logs.
 - Deletion and corruption have explicit fail-closed behavior.
+- Repeated learner requests remain distinct without an arbitrary product quota.
+- Choice order survives relaunch without changing answer identity or generated
+  trust.
 
 ### Negative
 
 - The app owns another local file lifecycle.
+- Repeated generation can consume finite device storage until explicit
+  generated-history management is delivered.
 - Model/runtime changes may leave older artifacts visible only under their
   recorded experimental identity until a later invalidation policy changes.
 - Cache optimization and storage management remain incomplete.
@@ -106,6 +143,11 @@ learning history would disappear. It is rejected.
 - Round-trip multiple artifacts and their exact identities.
 - Reject unsupported schema versions and corrupt or partial files.
 - Verify atomic replacement and deterministic restore ordering.
+- Verify one-time randomized choice order, stable restoration, and unchanged
+  answer-key identity with an injected deterministic random source.
+- Verify fresh request identity, no silent cache reuse, honest absence of a
+  uniqueness guarantee, and recoverable storage exhaustion without deleting
+  valid history.
 - Verify one invalid file fails closed without hiding unrelated valid history or
   blocking deletion.
 - Verify source deletion cascades without deleting source-free learning activity

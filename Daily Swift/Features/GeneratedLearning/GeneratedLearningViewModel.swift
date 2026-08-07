@@ -36,15 +36,15 @@ enum GeneratedLearningPresentationFailure: Equatable, Sendable {
         case .insufficientEvidence:
             "Try terms that appear in your imported sources or choose different source filters."
         case .sourceUnavailable:
-            "Daily Swift could not verify the current local passages. Your imports and reviewed learning remain unchanged."
+            "Daily Swift could not verify the current local passages. Your imports and saved generated history remain unchanged."
         case .contextTooLarge:
             "Use a narrower topic or fewer selected sources, then try again."
         case .safetyGuardrail:
-            "No generated content was saved. You can adjust the topic or continue with reviewed learning."
+            "No generated content was saved. Adjust the topic or return to your imported sources and generated history."
         case .storageUnavailable:
-            "No unverified artifact was shown. Reviewed learning and imported sources remain available."
+            "No unverified artifact was shown. Existing generated files were left unchanged, and imported sources remain available."
         case .generationFailed:
-            "No generated content was saved. Check availability and try again, or continue with reviewed learning."
+            "No generated content was saved. Check availability and try again, or return to your imported sources and generated history."
         }
     }
 }
@@ -100,15 +100,15 @@ extension LanguageModelUnavailability {
     var message: String {
         switch self {
         case .deviceNotSupported:
-            "Imported sources and reviewed articles still work without the model."
+            "Imported sources and previously generated learning remain readable without the model."
         case .intelligenceDisabled:
-            "Enable Apple Intelligence in Settings, or continue with reviewed learning."
+            "Enable Apple Intelligence in Settings. Your imported sources and generated history remain available."
         case .modelNotReady:
-            "Keep learning with reviewed content and try generation again later."
+            "Read your imported sources or saved generated learning, then try generation again later."
         case .languageOrRegionUnsupported:
-            "Change to a supported configuration or continue with reviewed learning."
+            "Change to a supported configuration. Your imported sources and generated history remain available."
         case .other:
-            "Reviewed articles, deterministic challenges, and imported sources remain available."
+            "Imported sources and previously generated learning remain available."
         }
     }
 }

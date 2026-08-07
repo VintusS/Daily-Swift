@@ -59,7 +59,7 @@ struct GeneratedArticleHistoryRow: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel(artifact.article.title)
         .accessibilityValue(
-            "\(artifact.topic). Experimental user material. \(activity.completedAt == nil ? "Not read" : "Read")"
+            "\(artifact.topic). Experimental user material. \(activity.completedAt == nil ? "Not read" : "Read")\(activity.isBookmarked ? ", Bookmarked" : "")"
         )
         .accessibilityHint("Opens the generated article.")
     }

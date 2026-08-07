@@ -7,6 +7,7 @@
 **Architecture preference:** pragmatic MVVM, Apple-native frameworks, no third-party runtime dependencies in the main app
 **Initial user:** the developer/owner, upper-intermediate Swift developer
 **Working product name:** Daily Swift
+**Last amended:** 2026-08-01 — generated-only learner presentation
 
 ---
 
@@ -50,6 +51,11 @@ Daily Swift should exceed Unwrap by teaching the full iOS-development ecosystem,
 ### 2.1 Learning quality before unlimited generation
 
 The app must not ask an LLM to invent a full curriculum from nothing. A manually designed, versioned competency graph is the authoritative backbone. AI selects, explains, combines, and generates material inside that structure.
+
+The learner may explicitly request new grounded variations repeatedly. This is
+not a promise of infinite artifacts, device storage, model availability, or
+semantic novelty; every request still passes the same source, provenance, and
+presentation gates.
 
 ### 2.2 Deterministic evaluation where possible
 
@@ -175,9 +181,11 @@ memory, energy, thermal, or accessibility threshold passed.
 Until the benchmark is completed, Foundation Models remains an experimental,
 unpromoted adapter behind the app-owned provider boundary. Generation is
 foreground-only, learner-initiated, serial, cancellable, and limited to four
-exactly cited source cards. Reviewed deterministic content remains the default
-fallback. Generated private-source quizzes are experimental activity and do
-not update mastery. Automatic/background batches remain prohibited.
+exactly cited source cards. The original experimental slice retained reviewed
+deterministic content as its learner-facing fallback; the generated-only
+completion follow-up below supersedes that presentation behavior. Generated
+private-source quizzes are experimental activity and do not update mastery.
+Automatic/background batches remain prohibited.
 
 This exception permits production boundary, grounding, validation, local
 history, and accessible generated-learning UI work. It does not authorize web
@@ -199,6 +207,41 @@ source card. That conservative limit is not proof of broader copyright
 compliance. Experimental private artifacts are not authorized for sharing,
 redistribution, or export; those capabilities require a separate rights
 decision and stronger policy.
+
+### Owner-directed generated-only presentation completion follow-up
+
+On 2026-08-01, after the first generated-learning vertical was visible, the
+owner directed that learner-facing articles and quizzes be generated-only. The
+production Today, Library, and Challenges experiences must not display the
+reviewed seed article or challenge bodies used by the deterministic learning
+foundation. The manually designed competency graph remains authoritative, and
+deterministic content may remain only as non-learner-facing assessment anchors,
+test fixtures, previews, or explicitly gated Debug scenarios.
+
+This decision supersedes learner-facing seed-fallback statements elsewhere in
+this plan and in the earlier Packet 008 acceptance baseline. When a new request
+cannot run or fails, the operational fallback is previously accepted generated
+history, lawful imported-source reading and search, preservation of learner
+data, an explicit unavailable or empty state, and retry. A fresh installation
+may therefore have no article or quiz until a grounded request succeeds. The
+app must not substitute a fixture or imply that new generation works without an
+available provider.
+
+Each learner-initiated Generate or New Variation action starts a fresh,
+foreground, serial request and receives a new artifact identity after
+acceptance. The product imposes no arbitrary count quota, but this is not an
+infinite-storage or uninterrupted-capacity guarantee: source-evidence bounds,
+model availability, validation, cancellation, finite device storage, and
+recoverable persistence failures still apply. Background and bulk generation
+remain prohibited while the provider is experimental.
+
+Quality-feedback collection is not part of this completion follow-up. A future
+Good or Bad rating must remain app-owned subjective feedback and must never be
+described as training the Apple system model or changing model weights, content
+trust, answer correctness, mastery, or curriculum. Rating storage, behavior,
+export, or dataset use requires a separate work packet and accepted
+architecture, privacy, consent, source-rights, retention, deletion, and
+device-evidence decision.
 
 ### Context limitation
 
@@ -735,6 +778,12 @@ Generate per learner, but cache by:
 
 “Personalized” should not mean wastefully regenerating identical content every time a screen opens.
 
+An explicit learner request for a new variation is different from reopening a
+screen: it must not silently return the prior presentation artifact. Exact and
+semantic duplicate suppression remain deferred validation work, so the product
+must not claim that a fresh request is inherently random, unique, or guaranteed
+to differ in wording.
+
 ---
 
 ## 9. Exercise engine
@@ -1047,7 +1096,10 @@ The queue changes based on:
 - battery and thermal state;
 - whether generated content is ready.
 
-A deterministic fallback queue must exist when AI generation is unavailable.
+When AI generation is unavailable, previously accepted generated history and
+lawful imported-source reading remain available offline. If neither exists, the
+app presents an honest empty or unavailable state; it does not insert an
+authored seed article or quiz into the learner-facing queue.
 
 ---
 
@@ -1332,6 +1384,9 @@ Default behavior:
 - no analytics SDK;
 - no ad SDK;
 - no source content sent to cloud AI without explicit per-use consent;
+- any future generated-content Good/Bad ratings require a separate accepted
+  local-storage, consent, and privacy decision and must not be described as
+  model training;
 - clear storage and deletion controls.
 
 ## 17.2 Prompt-injection defense
@@ -1599,6 +1654,12 @@ The app imports a lawful PDF, finds relevant passages, and opens the exact cited
 
 A learner can complete a full chapter using trusted static content, and mastery/review state updates correctly.
 
+The deterministic studio that first satisfied this criterion is retained as
+historical foundation evidence. Under the generated-only presentation
+amendment, its authored article and challenge bodies are not part of the
+production learner catalog; deterministic fixtures remain available to verify
+domain and assessment behavior.
+
 ## Phase 5 — Local AI learning pipeline
 
 ### Deliverables
@@ -1736,7 +1797,9 @@ The personal MVP is complete when it can:
 19. Create multi-file project workspaces.
 20. Export projects for Xcode on Mac.
 21. Pass automated tests and accessibility checks.
-22. Remain useful when AI generation is temporarily unavailable.
+22. Preserve saved generated learning and lawful source reading when AI
+    generation is temporarily unavailable, and present an honest empty state
+    when neither exists.
 
 ### Explicit MVP limitation
 
@@ -1772,7 +1835,7 @@ Keep these out of the initial personal build unless required by a spike:
 | Generated lesson is wrong | High | Designed curriculum, official-source preference, validators, trust tiers, reporting |
 | Generated question has ambiguous answer | High | Deterministic answer schemas, uniqueness checks, reject uncertain artifacts |
 | Local model context is too small | High | Retrieval, source cards, multi-stage generation, one artifact at a time |
-| Local model unavailable | High | Static seed curriculum and deterministic daily queue |
+| Local model unavailable | High | Preserve accepted generated history and source reading; present an honest empty/unavailable state when neither exists |
 | Arbitrary Swift compilation is infeasible | High | Capability levels, compiler spike, export to Xcode, optional future service |
 | SwiftUI code cannot run dynamically | High | Precompiled visual sandboxes, static checks, Xcode export |
 | Copyright violation | High | Rights metadata, private imports, licensed public packs only |
